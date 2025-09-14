@@ -8,16 +8,34 @@ import numpy as np
 # ==========================
 # Utilitários para Ângulos
 # ==========================
-def get_hand_connections():
-    """Retorna a lista de tríades de índices usadas para cálculo de ângulos da mão."""
-    return [
-        (0, 1, 2), (1, 2, 3), (2, 3, 4),  # Polegar
-        (0, 5, 6), (5, 6, 7), (6, 7, 8),  # Indicador
-        (0, 9, 10), (9, 10, 11), (10, 11, 12),  # Médio
-        (0, 13, 14), (13, 14, 15), (14, 15, 16),  # Anelar
-        (0, 17, 18), (17, 18, 19), (18, 19, 20),  # Mínimo
-        (5, 9, 13), (9, 13, 17)  # Entre dedos
-    ]
+HAND_CONNECTIONS_INDEXES = [
+    (4, 3, 2), (3, 2, 1),  # Polegar
+    (8, 7, 6), (7, 6, 5),  # Indicador
+    (12, 11, 10), (11, 10, 9),  # Médio
+    (16, 15, 14), (15, 14, 13),  # Anelar
+    (20, 19, 18), (19, 18, 17),  # Mínimo
+    (2, 1, 0), (1, 0, 5), (1, 0, 17), (5, 0, 17),  # Palma
+    (18, 17, 0), (6, 5, 0),  # Ligações dedos / palma
+    (6, 5, 9), (5, 9, 10), (10, 9, 13), (9, 13, 14), (14, 13, 17), (13, 17, 18),  # Ligações entre dedos
+    (5, 9, 13), (9, 13, 17),  # Palma (entre dedos)
+    (0, 17, 13), (0, 5, 9)  # Palma (base dos dedos)
+]
+
+POSE_PAIRS_INDEXES = [
+    (0, 15), (0, 16),  # Nariz e pulsos
+    (12, 16), (12, 15), (11, 16), (11, 15),  # Ombros e pulsos
+    (12, 14), (12, 13), (11, 14), (11, 13),  # Ombros e cotovelos
+    (16, 18), (16, 17), (15, 17), (15, 18),  # Pulsos e dedos mindinhos
+    (16, 20), (16, 19), (15, 20), (15, 19),  # Pulsos e dedos indicadores
+    (18, 20), (18, 19), (17, 20), (17, 19),  # Dedos mindinhos e indicadores
+    (18, 22), (18, 21), (17, 21), (17, 22),  # Dedos mindinhos e polegares
+    (20, 22), (20, 21), (19, 21), (19, 22),  # Dedos indicadores e polegares
+    (21, 22),  # Polegares esquerdo e direito
+    (19, 20),  # Indicadores esquerdo e direito
+    (17, 18),  # Mindinhos esquerdo e direito
+    (15, 16),  # Pulsos esquerdo e direito
+    (13, 14)  # Cotovelos esquerdo e direito
+]
 
 
 def compute_angle_between_vectors(v1, v2):
@@ -30,14 +48,15 @@ def compute_angle_between_vectors(v1, v2):
 
 def calculate_hand_angles(hand_landmarks):
     """Calcula 26 ângulos para uma mão. (Seção 4.4.1)"""
-    ANGLES_PER_HAND = 26
+    ANGLES_PER_HAND = len(HAND_CONNECTIONS_INDEXES)
     if hand_landmarks.sum() == 0:
         return np.zeros(ANGLES_PER_HAND)
 
     angles = []
-    for p1_idx, p2_idx, p3_idx in get_hand_connections():
-        p1, p2, p3 = hand_landmarks[p1_idx], hand_landmarks[p2_idx], hand_landmarks[p3_idx]
-        angle = compute_angle_between_vectors(p1 - p2, p3 - p2)
+    for point1_index, point2_index, point3_index in HAND_CONNECTIONS_INDEXES:
+        point1, point2, point3 = hand_landmarks[point1_index], hand_landmarks[
+            point2_index], hand_landmarks[point3_index]
+        angle = compute_angle_between_vectors(point1 - point2, point3 - point2)
         angles.append(angle)
 
     # Padding para garantir tamanho fixo
@@ -50,15 +69,23 @@ def calculate_hand_angles(hand_landmarks):
 # ==========================
 # Utilitários para Pose
 # ==========================
+def calculate_distance(point1, point2):
+    return np.linalg.norm(point1 - point2)
 
-def normalize_pose_landmarks(pose_landmarks):
-    """Normaliza os landmarks da pose com base no centro do torso."""
+
+def calculate_torso_size(pose_landmarks):
     left_shoulder, right_shoulder = pose_landmarks[11], pose_landmarks[12]
     left_hip, right_hip = pose_landmarks[23], pose_landmarks[24]
 
     pose_center = (left_shoulder + right_shoulder) / 2
     hip_center = (left_hip + right_hip) / 2
-    torso_size = np.linalg.norm(pose_center - hip_center)
+
+    return calculate_distance(pose_center, hip_center), pose_center
+
+
+def normalize_pose_landmarks(pose_landmarks):
+    """Normaliza os landmarks da pose com base no centro do torso."""
+    torso_size, pose_center = calculate_torso_size(pose_landmarks)
 
     if torso_size < 1e-6:  # Evita divisão por zero
         return None
@@ -66,23 +93,10 @@ def normalize_pose_landmarks(pose_landmarks):
     return (pose_landmarks - pose_center) / torso_size
 
 
-def get_pose_pairs():
-    """Retorna a lista de pares de índices para cálculo de distâncias da pose."""
-    return [
-        (11, 12), (11, 13), (12, 14), (13, 15), (14, 16),
-        (15, 17), (16, 18), (17, 19), (18, 20), (19, 21),
-        (20, 22), (21, 23), (22, 24), (23, 25), (24, 26),
-        (11, 23), (12, 24), (13, 25), (14, 26), (15, 27),
-        (16, 28), (17, 29), (18, 30), (19, 31), (20, 32),
-        (0, 11), (0, 12), (0, 23), (0, 24), (1, 11),
-        (2, 12), (3, 23), (4, 24), (5, 11), (6, 12),
-        (7, 23), (8, 24), (9, 11), (10, 12)
-    ]
-
-
 def calculate_pose_distances(pose_landmarks):
     """Normaliza a pose e calcula 38 distâncias. (Seção 4.4.2)"""
-    NUM_POSE_DISTANCES = 38
+    NUM_POSE_DISTANCES = len(POSE_PAIRS_INDEXES) + 1  # +1 para a distância do torso
+
     if pose_landmarks.sum() == 0:
         return np.zeros(NUM_POSE_DISTANCES)
 
@@ -90,10 +104,16 @@ def calculate_pose_distances(pose_landmarks):
     if normalized_landmarks is None:
         return np.zeros(NUM_POSE_DISTANCES)
 
-    distances = []
-    for p1_idx, p2_idx in get_pose_pairs():
-        if p1_idx < len(normalized_landmarks) and p2_idx < len(normalized_landmarks):
-            distances.append(np.linalg.norm(normalized_landmarks[p1_idx] - normalized_landmarks[p2_idx]))
+    torso_size, _ = calculate_torso_size(normalized_landmarks)
+
+    distances = [torso_size]
+    for point1_index, point2_index in POSE_PAIRS_INDEXES:
+        if point1_index < len(normalized_landmarks) and point2_index < len(normalized_landmarks):
+            distance = calculate_distance(
+                normalized_landmarks[point1_index],
+                normalized_landmarks[point2_index]
+            )
+            distances.append(distance)
         else:
             distances.append(0)
 
