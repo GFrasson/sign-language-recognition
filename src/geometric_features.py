@@ -37,6 +37,9 @@ POSE_PAIRS_INDEXES = [
     (13, 14)  # Cotovelos esquerdo e direito
 ]
 
+NUM_ANGLES_PER_HAND = len(HAND_CONNECTIONS_INDEXES)
+NUM_POSE_DISTANCES = len(POSE_PAIRS_INDEXES) + 1  # +1 para a distância do torso
+
 
 def compute_angle_between_vectors(v1, v2):
     """Calcula o ângulo entre dois vetores em graus."""
@@ -48,9 +51,8 @@ def compute_angle_between_vectors(v1, v2):
 
 def calculate_hand_angles(hand_landmarks):
     """Calcula 26 ângulos para uma mão. (Seção 4.4.1)"""
-    ANGLES_PER_HAND = len(HAND_CONNECTIONS_INDEXES)
     if hand_landmarks.sum() == 0:
-        return np.zeros(ANGLES_PER_HAND)
+        return np.zeros(NUM_ANGLES_PER_HAND)
 
     angles = []
     for point1_index, point2_index, point3_index in HAND_CONNECTIONS_INDEXES:
@@ -60,10 +62,10 @@ def calculate_hand_angles(hand_landmarks):
         angles.append(angle)
 
     # Padding para garantir tamanho fixo
-    while len(angles) < ANGLES_PER_HAND:
+    while len(angles) < NUM_ANGLES_PER_HAND:
         angles.append(0)
 
-    return np.array(angles[:ANGLES_PER_HAND])
+    return np.array(angles[:NUM_ANGLES_PER_HAND])
 
 
 # ==========================
@@ -95,8 +97,6 @@ def normalize_pose_landmarks(pose_landmarks):
 
 def calculate_pose_distances(pose_landmarks):
     """Normaliza a pose e calcula 38 distâncias. (Seção 4.4.2)"""
-    NUM_POSE_DISTANCES = len(POSE_PAIRS_INDEXES) + 1  # +1 para a distância do torso
-
     if pose_landmarks.sum() == 0:
         return np.zeros(NUM_POSE_DISTANCES)
 

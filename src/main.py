@@ -3,7 +3,13 @@ from matplotlib import pyplot as plt
 
 from model import build_model, train_model, evaluate_model, save_model
 from video_processing import list_video_files, extract_features_and_labels
+from geometric_features import NUM_ANGLES_PER_HAND, NUM_POSE_DISTANCES
 
+
+NUM_FRAMES = 15
+N_FEATURES = 2 * NUM_ANGLES_PER_HAND + NUM_POSE_DISTANCES
+LSTM_UNITS = 512
+DATA_PATH = "data/videos"
 
 # ==========================
 # 1. Carregamento de Dados
@@ -55,11 +61,6 @@ def plot_training_history(history):
 # Pipeline Principal
 # ==========================
 def main():
-    NUM_FRAMES = 15
-    N_FEATURES = 90
-    LSTM_UNITS = 512
-    DATA_PATH = "data/videos"
-
     class_mapping = get_class_mapping()
     video_files = list_video_files(DATA_PATH)
 
