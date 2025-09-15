@@ -1,7 +1,6 @@
 import os
 import numpy as np
 from tqdm import tqdm
-from collections import defaultdict
 
 from landmarks import extract_landmarks
 from geometric_features import extract_custom_geometric_features
