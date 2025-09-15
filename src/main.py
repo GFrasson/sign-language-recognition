@@ -10,21 +10,7 @@ NUM_FRAMES = 15
 N_FEATURES = 2 * NUM_ANGLES_PER_HAND + NUM_POSE_DISTANCES
 LSTM_UNITS = 512
 DATA_PATH = "data/videos"
-
-# ==========================
-# 1. Carregamento de Dados
-# ==========================
-def get_class_mapping():
-    """Retorna o mapeamento de classes baseado nas pastas."""
-    return {
-        '01-professor': 0,
-        '02-estudar': 1,
-        '03-aluno': 2,
-        '04-duvida': 3,
-        '05-perguntar': 4,
-        '06-responder': 5,
-        '07-entender': 6
-    }
+FEATURES_PATH = "data/features"
 
 
 # ==========================
@@ -91,26 +77,29 @@ def plot_training_history(history):
 # Pipeline Principal
 # ==========================
 def main():
-    class_mapping = get_class_mapping()
     video_files = list_video_files(DATA_PATH)
 
     print(f"Encontrados {len(video_files)} vídeos para processar")
-    X, y, signalers = extract_features_and_labels(video_files, NUM_FRAMES)
+    X, y, signalers = extract_features_and_labels(video_files, NUM_FRAMES, FEATURES_PATH)
 
     if len(X) == 0:
         print("Nenhum vídeo foi processado com sucesso. Verifique os caminhos e formatos dos arquivos.")
         return
+    
+    unique_classes = np.unique(y)
+    n_classes = len(unique_classes)
 
     print(f"Shape dos dados X: {X.shape}")
     print(f"Shape dos dados y: {y.shape}")
-    print(f"Classes únicas encontradas: {np.unique(y)}")
+    print(f"Classes únicas encontradas: {unique_classes}")
 
     X_train, y_train, X_val, y_val, X_test, y_test = split_dataset_by_signaler(X, y, signalers)
+    
     print(f"Dados de treino: {len(X_train)} amostras")
     print(f"Dados de validação: {len(X_val)} amostras")
     print(f"Dados de teste: {len(X_test)} amostras")
 
-    model = build_model(N_FEATURES, LSTM_UNITS, len(class_mapping))
+    model = build_model(N_FEATURES, LSTM_UNITS, n_classes)
     model.summary()
 
     history = train_model(model, X_train, y_train, X_val, y_val)

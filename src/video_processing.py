@@ -1,4 +1,5 @@
 import os
+import pickle
 import numpy as np
 from tqdm import tqdm
 
@@ -16,13 +17,56 @@ def list_video_files(data_path):
     return video_files
 
 
-def extract_features_and_labels(video_files, num_frames):
+def save_features(features, label, signaler, video_file, save_dir):
+    """Salva features, label e sinalizador em um arquivo .pkl."""
+    os.makedirs(save_dir, exist_ok=True)
+
+    filename = os.path.basename(video_file)
+    base_name = os.path.splitext(filename)[0]
+    save_path = os.path.join(save_dir, f"{base_name}_features.pkl")
+
+    with open(save_path, 'wb') as file:
+        pickle.dump({
+            'features': features,
+            'label': label,
+            'signaler': signaler
+        }, file)
+
+    return save_path
+
+
+def load_features(video_file, save_dir):
+    """Carrega features salvas, se existirem."""
+    filename = os.path.basename(video_file)
+    base_name = os.path.splitext(filename)[0]
+    save_path = os.path.join(save_dir, f"{base_name}_features.pkl")
+
+    if os.path.exists(save_path):
+        data = {}
+        with open(save_path, 'rb') as file:
+            data = pickle.load(file)
+
+        return data['features'], data['label'], data['signaler']
+    
+    return None, None, None
+
+
+def extract_features_and_labels(video_files, num_frames, save_dir):
     """Extrai features geométricas, rótulos e sinalizadores de uma lista de vídeos."""
     X, y, signalers = [], [], []
     for video_file in tqdm(video_files, desc="Extraindo Features"):
         folder_name = os.path.basename(os.path.dirname(video_file))
+
+        features_save_dir_path = os.path.join(save_dir, folder_name)
+        features, label, signaler = load_features(video_file, features_save_dir_path)
+
+        if features is not None:
+            X.append(features)
+            y.append(label)
+            signalers.append(signaler)
+            continue
+
         filename = os.path.basename(video_file)
-        
         label, class_name = folder_name.split('-')
         signaler = filename.split('-')[0]
 
@@ -41,8 +85,11 @@ def extract_features_and_labels(video_files, num_frames):
             continue
 
         features = extract_custom_geometric_features(raw_landmarks)
+
         X.append(features)
         y.append(label)
         signalers.append(signaler)
+        
+        save_features(features, label, signaler, video_file, features_save_dir_path)
 
     return np.array(X), np.array(y), np.array(signalers)
