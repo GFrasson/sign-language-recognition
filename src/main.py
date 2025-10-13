@@ -35,6 +35,10 @@ def split_dataset_by_signaler(X, y, signalers, train_ratio=0.7, val_ratio=0.15):
     val_signalers = unique_signalers[n_train:n_train + n_val]
     test_signalers = unique_signalers[n_train + n_val:]
 
+    print(train_signalers)
+    print(val_signalers)
+    print(test_signalers)
+
     def select_by_signalers(X, y, signalers, selected_signalers):
         mask = np.isin(signalers, selected_signalers)
         return X[mask], y[mask]
@@ -95,6 +99,14 @@ def main():
 
     X_train, y_train, X_val, y_val, X_test, y_test = split_dataset_by_signaler(X, y, signalers)
     
+    print(X_train)
+    print(y_train)
+    print(X_val)
+    print(y_val)
+    print(X_test)
+    print(y_test)
+    print(signalers)
+
     print(f"Dados de treino: {len(X_train)} amostras")
     print(f"Dados de validação: {len(X_val)} amostras")
     print(f"Dados de teste: {len(X_test)} amostras")
