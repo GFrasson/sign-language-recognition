@@ -3,7 +3,7 @@ import pickle
 import numpy as np
 from tqdm import tqdm
 
-from landmarks import extract_landmarks
+from landmarks import LandmarkExtractor
 from geometric_features import extract_custom_geometric_features
 
 
@@ -54,6 +54,7 @@ def load_features(video_file, save_dir):
 def extract_features_and_labels(video_files, num_frames, save_dir):
     """Extrai features geométricas, rótulos e sinalizadores de uma lista de vídeos."""
     X, y, signalers = [], [], []
+    landmarks_extractor = LandmarkExtractor()
     for video_file in tqdm(video_files, desc="Extraindo Features"):
         folder_name = os.path.basename(os.path.dirname(video_file))
 
@@ -79,7 +80,7 @@ def extract_features_and_labels(video_files, num_frames, save_dir):
 
         print(f"Processando: {video_file} -> Classe: {class_name} (ID: {label}), Sinalizador: {signaler}")
 
-        raw_landmarks = extract_landmarks(video_file, num_frames)
+        raw_landmarks = landmarks_extractor.extract_landmarks(video_file, num_frames)
         if raw_landmarks is None or raw_landmarks.shape[0] != num_frames:
             print(f"Erro ao processar vídeo: {video_file}")
             continue
