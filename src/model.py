@@ -1,9 +1,9 @@
+from os import makedirs, path
 from keras.models import Sequential
 from keras.layers import InputLayer, Masking, Normalization, LSTM, Dropout, Dense
 from keras.optimizers import Adam
 from keras.regularizers import l2
 from keras.callbacks import EarlyStopping
-
 
 
 def build_model(n_features, n_neurons, n_classes):
@@ -70,10 +70,14 @@ def evaluate_model(model, X_test, y_test):
     test_loss, test_acc = model.evaluate(X_test, y_test)
     print(f"\nAcurácia no conjunto de teste: {test_acc:.4f}")
 
+    return test_loss, test_acc
 
-def save_model(model, name="model"):
-    """Salva o modelo em dois formatos: H5 e Keras."""
-    model.save(f"{name}.h5")
-    print("Modelo salvo em formato .h5")
-    model.save(f"{name}.keras")
-    print("Modelo salvo em formato .keras")
+
+def save_model(model, folder="models"):
+    """Salva o modelo no formato Keras na pasta especificada."""
+    makedirs(folder, exist_ok=True)
+
+    keras_path = path.join(folder, "model.keras")
+
+    model.save(keras_path)
+    print(f"Modelo salvo em formato .keras: {keras_path}")

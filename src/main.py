@@ -1,3 +1,5 @@
+from datetime import datetime
+from os import makedirs, path
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -62,18 +64,22 @@ def split_dataset(X, y, train_ratio=0.8, val_ratio=0.1):
     )
 
 
-def plot_training_history(history):
+def plot_training_history(history, folder="models"):
     """Gera e salva gráficos de acurácia e perda."""
+    makedirs(folder, exist_ok=True)
+    accuracy_file_path = path.join(folder, "accuracy.png")
+    loss_file_path = path.join(folder, "loss.png")
+
     plt.plot(history.history['accuracy'], label='Acurácia')
     plt.plot(history.history['val_accuracy'], label='Acurácia de Validação')
     plt.legend()
-    plt.savefig('accuracy.png')
+    plt.savefig(accuracy_file_path)
     plt.close()
 
     plt.plot(history.history['loss'], label='Perda')
     plt.plot(history.history['val_loss'], label='Perda de Validação')
     plt.legend()
-    plt.savefig('loss.png')
+    plt.savefig(loss_file_path)
     plt.close()
 
 
@@ -89,7 +95,7 @@ def main():
     if len(X) == 0:
         print("Nenhum vídeo foi processado com sucesso. Verifique os caminhos e formatos dos arquivos.")
         return
-    
+
     unique_classes = np.unique(y)
     n_classes = len(unique_classes)
 
@@ -98,7 +104,7 @@ def main():
     print(f"Classes únicas encontradas: {unique_classes}")
 
     X_train, y_train, X_val, y_val, X_test, y_test = split_dataset_by_signaler(X, y, signalers)
-    
+
     print(X_train)
     print(y_train)
     print(X_val)
@@ -114,10 +120,15 @@ def main():
     model = build_model(N_FEATURES, LSTM_UNITS, n_classes)
     model.summary()
 
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
     history = train_model(model, X_train, y_train, X_val, y_val)
-    plot_training_history(history)
-    evaluate_model(model, X_test, y_test)
-    save_model(model)
+    _, test_acc = evaluate_model(model, X_test, y_test)
+
+    models_folder = path.join("models", f"{timestamp}_lstm_{test_acc:.4f}")
+    
+    plot_training_history(history, models_folder)
+    save_model(model, models_folder)
 
 
 if __name__ == '__main__':
