@@ -1,8 +1,8 @@
 from os import makedirs, path
 from keras.models import Sequential
 from keras.layers import InputLayer, Masking, Normalization, LSTM, Dropout, Dense
-from keras.optimizers import Adam
-from keras.regularizers import l2
+from keras.optimizers import AdamW
+from keras.regularizers import l1
 from keras.callbacks import EarlyStopping
 
 
@@ -21,7 +21,7 @@ def build_model(n_features, n_neurons, n_classes):
     # Camada Recorrente LSTM
     model.add(LSTM(
         n_neurons,
-        kernel_regularizer=l2(0.001),  # Regularização L2
+        kernel_regularizer=l1(0.001),  # Regularização L1
         activation='relu'  # Ativação ReLU
     ))
 
@@ -31,9 +31,10 @@ def build_model(n_features, n_neurons, n_classes):
     # Camada de Classificação
     model.add(Dense(n_classes, activation='softmax'))
 
-    # Otimizador Adam e Função de Perda
-    optimizer = Adam(
-        learning_rate=0.0001
+    # Otimizador AdamW e Função de Perda
+    optimizer = AdamW(
+        learning_rate=0.0001,
+        weight_decay=0.005
     )
 
     model.compile(
@@ -53,7 +54,8 @@ def train_model(model, X_train, y_train, X_val, y_val):
     early_stopping = EarlyStopping(
         monitor='val_accuracy',
         patience=20,
-        restore_best_weights=True
+        restore_best_weights=True,
+        start_from_epoch=150
     )
 
     print("\nIniciando o treinamento do modelo...")
