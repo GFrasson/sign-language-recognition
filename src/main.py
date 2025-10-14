@@ -105,14 +105,6 @@ def main():
 
     X_train, y_train, X_val, y_val, X_test, y_test = split_dataset_by_signaler(X, y, signalers)
 
-    print(X_train)
-    print(y_train)
-    print(X_val)
-    print(y_val)
-    print(X_test)
-    print(y_test)
-    print(signalers)
-
     print(f"Dados de treino: {len(X_train)} amostras")
     print(f"Dados de validação: {len(X_val)} amostras")
     print(f"Dados de teste: {len(X_test)} amostras")
