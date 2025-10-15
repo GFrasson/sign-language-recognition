@@ -1,5 +1,8 @@
+import os
+import tensorflow as tf
 from datetime import datetime
 from os import makedirs, path, rename
+import random
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -14,6 +17,19 @@ LSTM_UNITS = 512
 DATA_PATH = "data/videos"
 FEATURES_PATH = "data/features"
 MODELS_PATH = "models"
+SEED = 42
+
+random.seed(SEED)
+np.random.seed(SEED)
+rng = np.random.default_rng(SEED)
+tf.random.set_seed(SEED)
+
+# For deterministic behavior on CuDNN backend (GPU)
+os.environ['TF_CUDNN_DETERMINISTIC'] = '1'
+os.environ['TF_DETERMINISTIC_OPS'] = '1'
+
+# Set a fixed value for the Python hash seed to further aid reproducibility
+os.environ["PYTHONHASHSEED"] = str(SEED)
 
 
 # ==========================
@@ -53,7 +69,7 @@ def split_dataset_by_signaler(X, y, signalers, train_ratio=0.7, val_ratio=0.15):
     return X_train, y_train, X_val, y_val, X_test, y_test
 
 
-def cross_validate_leave_two_signalers_out(X, y, signalers, seed=42):
+def cross_validate_leave_two_signalers_out(X, y, signalers):
     """
     Realiza validação cruzada, deixando um sinalizador para validação e outro para teste.
     Os demais são usados para treino. A ordem dos pares é fixa para garantir consistência.
@@ -67,7 +83,6 @@ def cross_validate_leave_two_signalers_out(X, y, signalers, seed=42):
     results = []
 
     # Fix order for reproducibility
-    rng = np.random.default_rng(seed)
     ordered_signalers = rng.permutation(unique_signalers)
 
     for i in range(n_signalers):
