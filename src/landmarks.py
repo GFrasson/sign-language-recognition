@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 import mediapipe as mp
+import random
+import concurrent.futures
 
 
 # =============================================================================
@@ -8,7 +10,7 @@ import mediapipe as mp
 # =============================================================================
 class LandmarkExtractor:
     def __init__(self):
-        self.holistic_model = self.create_holistic_model()
+        pass
 
     def create_holistic_model(self):
         """Cria e retorna o modelo Holistic do MediaPipe com as configurações da Tabela 3."""
@@ -54,9 +56,11 @@ class LandmarkExtractor:
 
     def process_frame(self, frame):
         """Processa um frame, extrai e concatena todos os landmarks em um único vetor."""
+        holistic_model = self.create_holistic_model()
         frame_resized = cv2.resize(frame, (640, 480))
         frame_rgb = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
-        results = self.holistic_model.process(frame_rgb)
+        results = holistic_model.process(frame_rgb)
+        holistic_model.close()
 
         pose = np.array([[res.x, res.y, res.z] for res in results.pose_landmarks.landmark]).flatten() \
             if results.pose_landmarks else np.zeros(33 * 3)
@@ -70,10 +74,63 @@ class LandmarkExtractor:
         return np.concatenate([pose, face, lh, rh])
 
 
-    def extract_landmarks(self, video_path, num_frames=15):
+    def augment_frame(self, frame, params):
+        """Aplica as técnicas de aumento de dados em um frame."""
+        # Espelhamento horizontal
+        if params['flip']:
+            frame = cv2.flip(frame, 1)
+
+        # Rotação
+        if params['rotation'] != 0:
+            h, w = frame.shape[:2]
+            M = cv2.getRotationMatrix2D((w // 2, h // 2), params['rotation'], 1)
+            frame = cv2.warpAffine(frame, M, (w, h), borderMode=cv2.BORDER_REFLECT)
+
+        # Translação
+        if params['tx'] != 0 or params['ty'] != 0:
+            M = np.float32([
+                [1, 0, params['tx']],
+                [0, 1, params['ty']]
+            ])
+            frame = cv2.warpAffine(frame, M, (frame.shape[1], frame.shape[0]), borderMode=cv2.BORDER_REFLECT)
+
+        # Corte centralizado
+        if params['crop'] > 0:
+            h, w = frame.shape[:2]
+            crop_h = int(h * params['crop'])
+            crop_w = int(w * params['crop'])
+            frame = frame[crop_h:h - crop_h, crop_w:w - crop_w]
+            frame = cv2.resize(frame, (w, h))
+
+        # Alteração de brilho
+        if params['brightness'] != 1.0:
+            frame = cv2.convertScaleAbs(frame, alpha=params['brightness'], beta=0)
+
+        # Alteração de contraste
+        if params['contrast'] != 0:
+            frame = cv2.add(frame, np.array([params['contrast']]))
+
+        return frame
+
+
+    def random_augmentation_params(self):
+        """Gera parâmetros aleatórios para aumento de dados."""
+        return {
+            'flip': random.choice([True, False]),
+            'rotation': random.uniform(-5, 5),
+            'tx': random.randint(-20, 20),
+            'ty': random.randint(-20, 20),
+            'crop': random.uniform(0, 0.1),
+            'brightness': random.uniform(0.7, 1.3),
+            'contrast': random.randint(-20, 20)
+        }
+
+
+    def extract_landmarks(self, video_path, num_frames=15, augment=False):
         """
         Extrai landmarks de um vídeo usando o MediaPipe Holistic.
-        O vídeo é redimensionado para 640x480 para consistência (Seção 4.2.3).
+        Se augment=True, aplica aumento de dados com parâmetros fixos para o vídeo.
+        Agora processa frames em paralelo.
         """
         video_capture = self.open_video(video_path)
         if video_capture is None:
@@ -85,14 +142,20 @@ class LandmarkExtractor:
             return None
 
         frame_indices = self.sample_frame_indices(total_frames, num_frames)
+        params = self.random_augmentation_params() if augment else None
 
-        landmarks_sequence = []
+        frames = []
         for frame_idx in frame_indices:
             video_capture.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
             success, frame = video_capture.read()
             if success:
-                landmarks = self.process_frame(frame)
-                landmarks_sequence.append(landmarks)
-
+                if augment:
+                    frame = self.augment_frame(frame, params)
+                frames.append(frame)
         video_capture.release()
+
+        # Parallel processing of frames
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            landmarks_sequence = list(executor.map(self.process_frame, frames))
+
         return np.array(landmarks_sequence)
