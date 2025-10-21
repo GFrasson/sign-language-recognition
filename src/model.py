@@ -4,6 +4,7 @@ from keras.layers import InputLayer, Masking, Normalization, LSTM, Dropout, Dens
 from keras.optimizers import AdamW
 from keras.regularizers import l1
 from keras.callbacks import EarlyStopping
+import numpy as np
 
 
 def build_model(n_features, n_neurons, n_classes):
@@ -73,6 +74,15 @@ def evaluate_model(model, X_test, y_test):
     print(f"\nAcurácia no conjunto de teste: {test_acc:.4f}")
 
     return test_loss, test_acc
+
+
+def evaluate_model_for_cross_validation(model, X_test, y_test):
+    y_pred = np.argmax(model.predict(X_test), axis=1)
+    test_acc = np.mean(y_pred == y_test)
+
+    print(f"Acurácia no conjunto de teste: {test_acc:.4f}")
+
+    return y_pred, test_acc
 
 
 def save_model(model, folder="models"):
