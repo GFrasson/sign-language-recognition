@@ -48,9 +48,10 @@ def load_features(video_file, save_dir, augment_index=None):
         with open(save_path, 'rb') as file:
             data = pickle.load(file)
 
-        return data['features'], data['label'], data['signaler']
+        # return data['features'], data['label'], data['signaler']
+        return data['features']
     
-    return None, None, None
+    return None
 
 
 def extract_features_and_labels(video_files, num_frames, save_dir, augment_factor=20):
@@ -61,21 +62,21 @@ def extract_features_and_labels(video_files, num_frames, save_dir, augment_facto
     for video_file in tqdm(video_files, desc="Extraindo Features"):
         folder_name = os.path.basename(os.path.dirname(video_file))
 
+        filename = os.path.basename(video_file)
+        label, class_name = folder_name.split('-')
+        signaler = filename.split('-')[0]
+
+        try:
+            label = int(label)
+            signaler = int(signaler)
+        except ValueError:
+            print(f"Erro ao converter o label da classe ou do sinalizador para inteiro: {label}")
+            continue
+        
         features_save_dir_path = os.path.join(save_dir, folder_name)
-        features, label, signaler = load_features(video_file, features_save_dir_path)
+        features = load_features(video_file, features_save_dir_path)
 
         if features is None:
-            filename = os.path.basename(video_file)
-            label, class_name = folder_name.split('-')
-            signaler = filename.split('-')[0]
-
-            try:
-                label = int(label)
-                signaler = int(signaler)
-            except ValueError:
-                print(f"Erro ao converter o label da classe ou do sinalizador para inteiro: {label}")
-                continue
-
             print(f"Processando: {video_file} -> Classe: {class_name} (ID: {label}), Sinalizador: {signaler}")
 
             # Extração original (sem aumento)
@@ -94,7 +95,7 @@ def extract_features_and_labels(video_files, num_frames, save_dir, augment_facto
         # Aumento de dados (até augment_factor vezes)
         for i in range(augment_factor):
             features_save_dir_path = os.path.join(save_dir, folder_name)
-            features, label, signaler = load_features(video_file, features_save_dir_path, augment_index=i)
+            features = load_features(video_file, features_save_dir_path, augment_index=i)
 
             if features is not None:
                 X.append(features)
