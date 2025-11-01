@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
-from model import build_model, evaluate_model_for_cross_validation, train_model, evaluate_model, save_model
+from Model import Model
 from video_processing import list_video_files, extract_features_and_labels
 from geometric_features import NUM_ANGLES_PER_HAND, NUM_POSE_DISTANCES
 
@@ -114,10 +114,10 @@ def cross_validate_leave_two_signalers_out(X, y, signalers):
         X_test, y_test = select_by_signalers(X, y, signalers, [test_signaler])
 
         n_classes = len(np.unique(y))
-        model = build_model(N_FEATURES, LSTM_UNITS, n_classes)
-        history = train_model(model, X_train, y_train, X_val, y_val)
+        model = Model(N_FEATURES, LSTM_UNITS, n_classes)
+        history = model.train_model(X_train, y_train, X_val, y_val)
 
-        y_pred, test_acc = evaluate_model_for_cross_validation(model, X_test, y_test)
+        y_pred, test_acc = model.evaluate_model_for_cross_validation(X_test, y_test)
 
         # Aggregate predictions and labels
         all_test_preds.extend(y_pred)
@@ -125,7 +125,7 @@ def cross_validate_leave_two_signalers_out(X, y, signalers):
 
         models_folder = path.join(current_models_folder, f"{i}_fold_lstm_{test_acc:.4f}_val_{val_signaler}_test_{test_signaler}")
     
-        save_model(model, models_folder)
+        model.save_model(models_folder)
         plot_training_history(history, models_folder)
         plot_confusion_matrix(y_test, y_pred, np.unique(y), f"Confusion Matrix - Val: {val_signaler}, Test: {test_signaler}", models_folder)
 
@@ -206,18 +206,18 @@ def main_train_test_split():
     print(f"Dados de validação: {len(X_val)} amostras")
     print(f"Dados de teste: {len(X_test)} amostras")
 
-    model = build_model(N_FEATURES, LSTM_UNITS, n_classes)
+    model = Model(N_FEATURES, LSTM_UNITS, n_classes)
     model.summary()
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
-    history = train_model(model, X_train, y_train, X_val, y_val)
-    _, test_acc = evaluate_model(model, X_test, y_test)
+    history = model.train_model(X_train, y_train, X_val, y_val)
+    _, test_acc = model.evaluate_model(X_test, y_test)
 
     models_folder = path.join("models", f"{timestamp}_lstm_{test_acc:.4f}")
     
     plot_training_history(history, models_folder)
-    save_model(model, models_folder)
+    model.save_model(models_folder)
 
 
 def main():
