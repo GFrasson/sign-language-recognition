@@ -224,7 +224,7 @@ def main():
     video_files = list_video_files(DATA_PATH)
 
     print(f"Encontrados {len(video_files)} vídeos para processar")
-    X, y, signalers = extract_features_and_labels(video_files, NUM_FRAMES, FEATURES_PATH, augment_factor=0)
+    X, y, signalers = extract_features_and_labels(video_files, NUM_FRAMES, FEATURES_PATH)
 
     if len(X) == 0:
         print("Nenhum vídeo foi processado com sucesso. Verifique os caminhos e formatos dos arquivos.")
