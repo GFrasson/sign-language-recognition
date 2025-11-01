@@ -5,6 +5,7 @@ from keras.optimizers import AdamW
 from keras.regularizers import l1
 from keras.callbacks import EarlyStopping
 import numpy as np
+import tensorflow as tf
 
 
 def build_model(n_features, n_neurons, n_classes):
@@ -14,7 +15,7 @@ def build_model(n_features, n_neurons, n_classes):
     model.add(InputLayer(input_shape=(15, n_features)))
 
     # Camada de Máscara (ignora passos de tempo com padding de zeros)
-    model.add(Masking(mask_value=0.0))
+    # model.add(Masking(mask_value=0.0))
 
     # Camada de Normalização (importante para features em escalas diferentes)
     model.add(Normalization())
@@ -23,7 +24,6 @@ def build_model(n_features, n_neurons, n_classes):
     model.add(LSTM(
         n_neurons,
         kernel_regularizer=l1(0.001),  # Regularização L1
-        activation='relu'  # Ativação ReLU
     ))
 
     # Camada de Dropout para regularização
@@ -41,7 +41,7 @@ def build_model(n_features, n_neurons, n_classes):
     model.compile(
         optimizer=optimizer,
         loss='sparse_categorical_crossentropy',
-        metrics=['accuracy']
+        metrics=['accuracy'],
     )
 
     return model
@@ -56,16 +56,22 @@ def train_model(model, X_train, y_train, X_val, y_val):
         monitor='val_accuracy',
         patience=20,
         restore_best_weights=True,
-        start_from_epoch=150
+        # start_from_epoch=150
     )
 
     print("\nIniciando o treinamento do modelo...")
+
+    tf.debugging.set_log_device_placement(True)
+    print("Devices:", tf.config.list_physical_devices())
+    print("Num GPUs Available:", len(tf.config.list_physical_devices('GPU')))
+    
     return model.fit(
         X_train,
         y_train,
         validation_data=(X_val, y_val),
         epochs=200,
-        callbacks=[early_stopping]
+        callbacks=[early_stopping],
+        batch_size=1024,
     )
 
 def evaluate_model(model, X_test, y_test):
