@@ -1,5 +1,7 @@
 venv
+venv-wsl
 data
 models
 __pycache__
 tests.ipynb
+cuda*
