@@ -4,17 +4,18 @@ from tqdm import tqdm
 
 from file_utils import get_folder_name, get_filename
 from features import get_features
+from dataset import Dataset
 
 
-def process_videos(video_files: list[str], num_frames: int, save_dir: str, augment_factor: int = 20):
+def process_videos(video_files: list[str], num_frames: int, save_dir: str, augment_factor: int = 20) -> Dataset:
     """Processa uma lista de vídeos, com aumento de dados."""
-    X, y, signalers = [], [], []
+    X, y, signalers, is_augmented = [], [], [], []
 
     for video_file in tqdm(video_files, desc="Extraindo Features"):
-        print(f"Processando: {video_file} -> Classe: {class_name} (ID: {label}), Sinalizador: {signaler}")
-
         folder_name = get_folder_name(video_file)
         label, signaler, class_name = get_info_from_video_file(video_file)
+
+        print(f"Processando: {video_file} -> Classe: {class_name} (ID: {label}), Sinalizador: {signaler}")
 
         features_save_dir_path = os.path.join(save_dir, folder_name)
 
@@ -28,8 +29,9 @@ def process_videos(video_files: list[str], num_frames: int, save_dir: str, augme
             X.append(features)
             y.append(label)
             signalers.append(signaler)
+            is_augmented.append(augment_index is not None)
 
-    return np.array(X), np.array(y), np.array(signalers)
+    return Dataset(np.array(X), np.array(y), np.array(signalers), np.array(is_augmented))
 
 
 def get_info_from_video_file(video_file: str) -> tuple[int, int, str]:
