@@ -2,10 +2,12 @@ import cv2
 import mediapipe as mp
 import numpy as np
 from landmarks import create_holistic_model
-from geometric_features import extract_frame_features, HAND_CONNECTIONS_INDEXES, POSE_PAIRS_INDEXES
+from geometric_features import extract_frame_features
+from entities.Settings import GeometricFeaturesSettings 
 
 mp_drawing = mp.solutions.drawing_utils
 mp_holistic = mp.solutions.holistic
+
 
 def run_realtime_landmarks():
     holistic_model = create_holistic_model()
@@ -54,9 +56,9 @@ def run_realtime_landmarks():
         y0 = 20
         dy = 20
         for i in range(5):
-            lh_conn = HAND_CONNECTIONS_INDEXES[i]
-            rh_conn = HAND_CONNECTIONS_INDEXES[i]
-            pose_conn = POSE_PAIRS_INDEXES[i] if i < len(POSE_PAIRS_INDEXES) else ("-", "-")
+            lh_conn = GeometricFeaturesSettings.HAND_CONNECTIONS_INDEXES[i]
+            rh_conn = GeometricFeaturesSettings.HAND_CONNECTIONS_INDEXES[i]
+            pose_conn = GeometricFeaturesSettings.POSE_PAIRS_INDEXES[i] if i < len(GeometricFeaturesSettings.POSE_PAIRS_INDEXES) else ("-", "-")
             lh_label = f"LH Angle {i+1} ({lh_conn[0]}-{lh_conn[1]}-{lh_conn[2]})"
             rh_label = f"RH Angle {i+1} ({rh_conn[0]}-{rh_conn[1]}-{rh_conn[2]})"
             pose_label = f"Pose Dist {i+1} ({pose_conn[0]}-{pose_conn[1]})"

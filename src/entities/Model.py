@@ -1,11 +1,13 @@
 from os import makedirs, path
 from keras.models import Sequential
-from keras.layers import InputLayer, Masking, Normalization, LSTM, Dropout, Dense
+from keras.layers import InputLayer, Normalization, LSTM, Dropout, Dense
 from keras.optimizers import AdamW
 from keras.regularizers import l1
 from keras.callbacks import EarlyStopping
 import numpy as np
 import tensorflow as tf
+
+from entities.Settings import Settings, ModelSettings
 
 
 class Model:
@@ -15,12 +17,11 @@ class Model:
         self.n_classes = n_classes
         self.model = self.build_model()
 
-
     def build_model(self):
         model = Sequential()
 
         # Camada de Entrada
-        model.add(InputLayer(input_shape=(15, self.n_features)))
+        model.add(InputLayer(input_shape=(Settings.NUM_FRAMES, self.n_features)))
 
         # Camada de Máscara (ignora passos de tempo com padding de zeros)
         # model.add(Masking(mask_value=0.0))
@@ -35,15 +36,15 @@ class Model:
         ))
 
         # Camada de Dropout para regularização
-        model.add(Dropout(0.4))
+        model.add(Dropout(ModelSettings.DROPOUT_RATE))
 
         # Camada de Classificação
         model.add(Dense(self.n_classes, activation='softmax'))
 
         # Otimizador AdamW e Função de Perda
         optimizer = AdamW(
-            learning_rate=0.0001,
-            weight_decay=0.005
+            learning_rate=ModelSettings.LEARNING_RATE,
+            weight_decay=ModelSettings.WEIGHT_DECAY
         )
 
         model.compile(
@@ -58,7 +59,7 @@ class Model:
         """Treina o modelo com early stopping e retorna o histórico."""
         early_stopping = EarlyStopping(
             monitor='val_accuracy',
-            patience=20,
+            patience=ModelSettings.EARLY_STOPPING_PATIENCE,
             restore_best_weights=True,
             # start_from_epoch=150
         )
@@ -73,9 +74,9 @@ class Model:
             X_train,
             y_train,
             validation_data=(X_val, y_val),
-            epochs=200,
+            epochs=ModelSettings.EPOCHS,
             callbacks=[early_stopping],
-            batch_size=1024,
+            batch_size=ModelSettings.BATCH_SIZE,
         )
 
     def evaluate_model(self, X_test, y_test):
