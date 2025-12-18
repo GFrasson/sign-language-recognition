@@ -77,13 +77,14 @@ def train_and_evaluate_fold(dataset: Dataset, ordered_signalers: np.ndarray, val
         y_pred,
         dataset.unique_classes,
         f"Confusion Matrix - Val: {val_signaler}, Test: {test_signaler}",
-        models_fold_path
+        models_fold_path,
+        target_names=dataset.unique_class_names
     )
 
     return y_pred, y_test, test_acc
 
 
-def aggregate_and_finalize_results(predictions: List[int], labels: List[int], unique_classes: np.ndarray, current_models_folder: str) -> None:
+def aggregate_and_finalize_results(predictions: List[int], labels: List[int], unique_classes: np.ndarray, unique_class_names: np.ndarray, current_models_folder: str) -> None:
     """
     Calculates overall accuracy, renames the results folder, and plots the final confusion matrix.
     """
@@ -102,7 +103,8 @@ def aggregate_and_finalize_results(predictions: List[int], labels: List[int], un
         all_test_preds, 
         unique_classes, 
         "Confusion Matrix - All Folds", 
-        final_folder_path
+        final_folder_path,
+        target_names=unique_class_names
     )
 
 
@@ -140,7 +142,7 @@ def cross_validate_leave_two_signalers_out(dataset: Dataset, rng: np.random.Gene
         })
         print(f"Val: {val_signaler}, Test: {test_signaler}, Test accuracy: {test_acc:.4f}")
 
-    aggregate_and_finalize_results(all_test_predictions, all_test_labels, dataset.unique_classes, current_models_folder)
+    aggregate_and_finalize_results(all_test_predictions, all_test_labels, dataset.unique_classes, dataset.unique_class_names, current_models_folder)
     return results
 
 

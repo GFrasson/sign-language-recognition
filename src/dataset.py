@@ -7,6 +7,7 @@ class Dataset:
     X: np.ndarray
     y: np.ndarray
     signalers: np.ndarray
+    class_map: dict[int, str]
     is_augmented: np.ndarray = None
     
     @property
@@ -16,6 +17,11 @@ class Dataset:
     @property
     def unique_classes(self) -> np.ndarray:
         return np.unique(self.y)
+
+    @property
+    def unique_class_names(self) -> np.ndarray:
+        """Returns class names sorted by their corresponding label ID."""
+        return np.array([self.class_map[label] for label in self.unique_classes])
 
     def get_data(self, selected_signalers: list[int], allow_augmented: bool = True) -> tuple[np.ndarray, np.ndarray]:
         mask = np.isin(self.signalers, selected_signalers)
