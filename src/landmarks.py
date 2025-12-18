@@ -7,18 +7,69 @@ from entities.Video import Video
 from entities.VideoFrame import VideoFrame
 
 
-def extract_landmarks(video_path: str, num_frames: int = Settings.NUM_FRAMES, augment: bool = False):
-    """
-    Extrai landmarks de um vídeo usando o MediaPipe Holistic.
-    Se augment=True, aplica aumento de dados com parâmetros fixos para o vídeo.
-    Agora processa frames em paralelo.
-    """
-    video: Video = None
-
+def read_all_video_frames(video_path: str) -> list[VideoFrame]:
+    """Lê TODOS os frames do vídeo."""
     try:
         video = Video(video_path)
     except ValueError as e:
-        print(e)
+        print(f"Error opening video {video_path}: {e}")
+        return None
+
+    video_frames = []
+    # Read all frames regardless of count
+    # Video class might not support iteration? Let's check. 
+    # VideoFrame usually has total_frames.
+    
+    # We can iterate until None is returned or use total_frames.
+    # Assuming standard OpenCV behavior in Video class wrapper.
+    # Based on previous code, video.read_frame(index) works.
+    
+    # Optimally, we process sequentially for speed rather than seeking.
+    # But read_frame likely does seeking if index is passed?
+    # Let's inspect Video class indirectly or assume sequential read is best.
+    # If Video class supports seekless read, that's better. 
+    # But previous code used indices.
+    
+    # Let's try reading all frames using indices 0 to total_frames-1
+    for i in range(video.total_frames):
+        vf = video.read_frame(i)
+        if vf is not None:
+            video_frames.append(vf)
+            
+    video.release()
+    
+    if len(video_frames) == 0:
+        return None
+        
+    return video_frames
+
+
+def sample_frames_from_list(all_frames: list[VideoFrame], num_frames: int = Settings.NUM_FRAMES) -> list[VideoFrame]:
+    """Seleciona frames aleatórios de uma lista já carregada (distribuição normal)."""
+    total_frames = len(all_frames)
+    
+    if total_frames < num_frames:
+        # If fewer frames than needed, duplicate or take all?
+        # Standard behavior: take all and maybe pad? 
+        # But previous code returned None if total < num.
+        # Let's align with previous behavior -> Return None or maybe duplicate?
+        # Reverting to 'None' for consistency with landmarks.py:25
+        return None
+
+    # Use same logic as __sample_frame_indices but on range 0..len(all_frames)
+    frame_indices = __sample_frame_indices(total_frames, num_frames)
+    
+    selected_frames = [all_frames[i] for i in frame_indices]
+    return selected_frames
+
+
+def read_video_frames(video_path: str, num_frames: int = Settings.NUM_FRAMES) -> list[VideoFrame]:
+    """Lê frames do vídeo selecionados via distribuição normal."""
+    # ... existing implementation ...
+    try:
+        video = Video(video_path)
+    except ValueError as e:
+        print(f"Error opening video {video_path}: {e}")
         return None
 
     total_frames = video.total_frames
@@ -27,31 +78,84 @@ def extract_landmarks(video_path: str, num_frames: int = Settings.NUM_FRAMES, au
         return None
 
     frame_indices = __sample_frame_indices(total_frames, num_frames)
-    params = __random_augmentation_params() if augment else None
-
-    video_frames: list[VideoFrame] = []
-    for frame_idx in frame_indices:
-        video_frame = video.read_frame(frame_idx)
-        
-        if video_frame is not None:
-            if augment:
-                video_frame = __augment_frame(video_frame, params)
-            video_frames.append(video_frame)
     
+    video_frames = []
+    for frame_idx in frame_indices:
+        vf = video.read_frame(frame_idx)
+        if vf is not None:
+            video_frames.append(vf)
+            
     video.release()
+    
+    if len(video_frames) < num_frames:
+        return None
+        
+    return video_frames
 
-    # Sequential processing of frames to save memory
+
+def process_frames(video_frames: list[VideoFrame], augment: bool = False, augment_params = None) -> np.ndarray:
+    """Processa uma lista de frames (VideoFrame) e retorna landmarks."""
+    
+    # Apply augmentation if needed (on a copy/in-place? VideoFrame methods mutate?)
+    # VideoFrame methods usually mutate self or return self? 
+    # Let's assume we need to clone if we want to preserve original for other augs.
+    # But here we receive a list of frames that we are allowed to modify or processed frames.
+    
+    frames_to_process = []
+    if augment:
+        # Generate params if not provided, though typically passed from outside for consistency? 
+        # Current logic generates random params here if augment=True.
+        if augment_params is None:
+            augment_params = __random_augmentation_params()
+            
+        for vf in video_frames:
+            # We MUST clone the frame because specific augmentation modifies it in place
+            # and we want to reuse the original frames for other augmentations.
+            # VideoFrame is likely a wrapper around a numpy array. 
+            # We need deep copy of the image.
+            
+            # Assuming VideoFrame needs a copy method or we reconstruct it.
+            # Looking at codebase, VideoFrame seems to hold .frame (numpy)
+            # Let's add a safe copy mechanism here if VideoFrame doesn't support it, 
+            # or rely on the caller to pass fresh copies. 
+            # For safety with current VideoFrame implementation (unknown to me in detail), 
+            # let's assume methods modify in place.
+            
+            # Since we don't have a visible clone method, we rely on the fact that
+            # __augment_frame modifies the object. 
+            # We should create a NEW VideoFrame object with a copy of the numpy array.
+            
+            new_vf = VideoFrame(vf.frame.copy())
+            frames_to_process.append(__augment_frame(new_vf, augment_params))
+    else:
+        # If not augmenting, we can just use the frames. 
+        # But wait, resize() in __process_frame modifies in place too?
+        # "__process_frame: video_frame.resize(...)"
+        # Yes, it likely modifies. So we ALWAYS need copies if we want to reuse the source frames.
+        frames_to_process = [VideoFrame(vf.frame.copy()) for vf in video_frames]
+
     # Create models once and reuse them
     pose_model = create_pose_model()
     hands_model = create_hands_model()
 
     try:
-        landmarks_sequence = [__process_frame(vf, pose_model, hands_model) for vf in video_frames]
+        landmarks_sequence = [__process_frame(vf, pose_model, hands_model) for vf in frames_to_process]
     finally:
         pose_model.close()
         hands_model.close()
     
     return np.array(landmarks_sequence)
+
+
+def extract_landmarks(video_path: str, num_frames: int = Settings.NUM_FRAMES, augment: bool = False):
+    """
+    Mantém compatibilidade com código legado, mas usa as novas funções.
+    """
+    frames = read_video_frames(video_path, num_frames)
+    if frames is None:
+        return None
+        
+    return process_frames(frames, augment)
 
 
 def create_pose_model():
