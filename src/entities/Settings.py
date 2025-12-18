@@ -27,8 +27,7 @@ class GeometricFeaturesSettings:
         (20, 19, 18), (19, 18, 17),  # Mínimo
         (2, 1, 0), (1, 0, 5), (1, 0, 17), (5, 0, 17),  # Palma
         (18, 17, 0), (6, 5, 0),  # Ligações dedos / palma
-        (6, 5, 9), (5, 9, 10), (10, 9, 13), (9, 13, 14), (14,
-                                                          13, 17), (13, 17, 18),  # Ligações entre dedos
+        (6, 5, 9), (5, 9, 10), (10, 9, 13), (9, 13, 14), (14, 13, 17), (13, 17, 18),  # Ligações entre dedos
         (5, 9, 13), (9, 13, 17),  # Palma (entre dedos)
         (0, 17, 13), (0, 5, 9)  # Palma (base dos dedos)
     ]

@@ -13,8 +13,8 @@ def extract_frame_features(frame_landmarks):
     """Extrai as 90 features geométricas de um único frame."""
     all_landmarks = frame_landmarks.reshape(-1, 3)
     pose_landmarks = all_landmarks[0:33]
-    left_hand_landmarks = all_landmarks[501:522]
-    right_hand_landmarks = all_landmarks[522:543]
+    left_hand_landmarks = all_landmarks[33:54]
+    right_hand_landmarks = all_landmarks[54:75]
 
     left_hand_angles = __calculate_hand_angles(left_hand_landmarks)
     right_hand_angles = __calculate_hand_angles(right_hand_landmarks)
