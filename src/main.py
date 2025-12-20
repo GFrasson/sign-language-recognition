@@ -152,7 +152,7 @@ def main():
     video_files: list[str] = list_filepaths_with_extension(Settings.DATA_PATH, '.mp4')
     print(f"Encontrados {len(video_files)} vídeos para processar")
 
-    dataset = process_videos(video_files, Settings.NUM_FRAMES, Settings.FEATURES_PATH)
+    dataset = process_videos(video_files, Settings.NUM_FRAMES, Settings.FEATURES_PATH, augment_factor=20)
 
     if len(dataset.X) == 0:
         print("Nenhum vídeo foi processado com sucesso. Verifique os caminhos e formatos dos arquivos.")
