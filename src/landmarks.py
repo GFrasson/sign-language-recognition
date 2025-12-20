@@ -2,7 +2,7 @@ import random
 
 import numpy as np
 import mediapipe as mp
-from entities.Settings import Settings
+from entities.Settings import Settings, LandmarkSettings
 from entities.Video import Video
 from entities.VideoFrame import VideoFrame
 
@@ -207,13 +207,13 @@ def __process_frame(video_frame: VideoFrame, holistic_model):
     results = holistic_model.process(video_frame.frame)
 
     pose = np.array([[res.x, res.y, res.z] for res in results.pose_landmarks.landmark]).flatten() \
-        if results.pose_landmarks else np.zeros(33 * 3)
+        if results.pose_landmarks else np.zeros(LandmarkSettings.POSE_COUNT * 3)
     face = np.array([[res.x, res.y, res.z] for res in results.face_landmarks.landmark]).flatten() \
-        if results.face_landmarks else np.zeros(468 * 3)
+        if results.face_landmarks else np.zeros(LandmarkSettings.FACE_COUNT * 3)
     lh = np.array([[res.x, res.y, res.z] for res in results.left_hand_landmarks.landmark]).flatten() \
-        if results.left_hand_landmarks else np.zeros(21 * 3)
+        if results.left_hand_landmarks else np.zeros(LandmarkSettings.HAND_COUNT * 3)
     rh = np.array([[res.x, res.y, res.z] for res in results.right_hand_landmarks.landmark]).flatten() \
-        if results.right_hand_landmarks else np.zeros(21 * 3)
+        if results.right_hand_landmarks else np.zeros(LandmarkSettings.HAND_COUNT * 3)
 
     return np.concatenate([pose, face, lh, rh])
 

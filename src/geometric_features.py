@@ -1,5 +1,5 @@
 import numpy as np
-from entities.Settings import GeometricFeaturesSettings
+from entities.Settings import GeometricFeaturesSettings, LandmarkSettings
 
 
 def extract_custom_geometric_features(landmarks_sequence):
@@ -10,11 +10,11 @@ def extract_custom_geometric_features(landmarks_sequence):
 
 
 def extract_frame_features(frame_landmarks):
-    """Extrai as 90 features geométricas de um único frame."""
+    """Extrai as 88 features geométricas de um único frame."""
     all_landmarks = frame_landmarks.reshape(-1, 3)
-    pose_landmarks = all_landmarks[0:33]
-    left_hand_landmarks = all_landmarks[33:54]
-    right_hand_landmarks = all_landmarks[54:75]
+    pose_landmarks = all_landmarks[LandmarkSettings.POSE_START:LandmarkSettings.POSE_END]
+    left_hand_landmarks = all_landmarks[LandmarkSettings.LEFT_HAND_START:LandmarkSettings.LEFT_HAND_END]
+    right_hand_landmarks = all_landmarks[LandmarkSettings.RIGHT_HAND_START:LandmarkSettings.RIGHT_HAND_END]
 
     left_hand_angles = __calculate_hand_angles(left_hand_landmarks)
     right_hand_angles = __calculate_hand_angles(right_hand_landmarks)

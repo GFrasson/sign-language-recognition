@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from entities.Settings import LandmarkSettings
 
 
 def create_skeleton_video(landmarks: np.ndarray, output_path: str, width: int = 640, height: int = 480, fps: int = 5):
@@ -20,16 +21,15 @@ def create_skeleton_video(landmarks: np.ndarray, output_path: str, width: int = 
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
-    # Define ranges
-    # Pose: 0-33 (33 points) -> 0 to 99 flat indices
-    # LH: 33-54 (21 points) -> 99 to 162 flat indices
-    # RH: 54-75 (21 points) -> 162 to 225 flat indices
+    # Define ranges based on Settings (handling flattened 1D array)
+    pose_start = LandmarkSettings.POSE_START * 3
+    pose_end = LandmarkSettings.POSE_END * 3
     
-    POSE_COUNT = 33
-    HAND_COUNT = 21
+    lh_start = LandmarkSettings.LEFT_HAND_START * 3
+    lh_end = LandmarkSettings.LEFT_HAND_END * 3
     
-    pose_end = POSE_COUNT * 3
-    lh_end = pose_end + (HAND_COUNT * 3)
+    rh_start = LandmarkSettings.RIGHT_HAND_START * 3
+    rh_end = LandmarkSettings.RIGHT_HAND_END * 3
     
     for flat_frame in landmarks:
         # Create white image
@@ -52,13 +52,13 @@ def create_skeleton_video(landmarks: np.ndarray, output_path: str, width: int = 
                 cv2.circle(img, (px, py), 3, color, -1)
 
         # Draw Pose (Red)
-        draw_points(flat_frame[:pose_end], (0, 0, 255))
+        draw_points(flat_frame[pose_start:pose_end], (0, 0, 255))
         
         # Draw Left Hand (Green)
-        draw_points(flat_frame[pose_end:lh_end], (0, 255, 0))
+        draw_points(flat_frame[lh_start:lh_end], (0, 255, 0))
         
         # Draw Right Hand (Blue)
-        draw_points(flat_frame[lh_end:], (255, 0, 0))
+        draw_points(flat_frame[rh_start:rh_end], (255, 0, 0))
 
         out.write(img)
 

@@ -9,6 +9,27 @@ class Settings:
     VIDEO_HEIGHT: int = 480
 
 
+class LandmarkSettings:
+    POSE_COUNT: int = 33
+    FACE_COUNT: int = 468
+    HAND_COUNT: int = 21
+
+    # Indicies (offsets) in the flattened vector [Pose, Face, LH, RH]
+    POSE_START: int = 0
+    POSE_END: int = POSE_START + POSE_COUNT
+
+    FACE_START: int = POSE_END
+    FACE_END: int = FACE_START + FACE_COUNT
+
+    LEFT_HAND_START: int = FACE_END
+    LEFT_HAND_END: int = LEFT_HAND_START + HAND_COUNT
+
+    RIGHT_HAND_START: int = LEFT_HAND_END
+    RIGHT_HAND_END: int = RIGHT_HAND_START + HAND_COUNT
+
+    TOTAL_LANDMARKS: int = RIGHT_HAND_END
+
+
 class ModelSettings:
     BATCH_SIZE: int = 1024
     EPOCHS: int = 200
