@@ -135,14 +135,13 @@ def process_frames(video_frames: list[VideoFrame], augment: bool = False, augmen
         frames_to_process = [VideoFrame(vf.frame.copy()) for vf in video_frames]
 
     # Create models once and reuse them
-    pose_model = create_pose_model()
-    hands_model = create_hands_model()
+    holistic_model = create_holistic_model()
 
     try:
-        landmarks_sequence = [__process_frame(vf, pose_model, hands_model) for vf in frames_to_process]
+        landmarks_sequence = [__process_frame(vf, holistic_model) for vf in frames_to_process]
     finally:
-        pose_model.close()
-        hands_model.close()
+        holistic_model.close()
+        # hands_model.close()
     
     return np.array(landmarks_sequence)
 
@@ -158,23 +157,14 @@ def extract_landmarks(video_path: str, num_frames: int = Settings.NUM_FRAMES, au
     return process_frames(frames, augment)
 
 
-def create_pose_model():
-    return mp.solutions.pose.Pose(
+def create_holistic_model():
+    return mp.solutions.holistic.Holistic(
         static_image_mode=False,
         model_complexity=2,
         smooth_landmarks=True,
         enable_segmentation=False,
         smooth_segmentation=False,
-        min_detection_confidence=0.9,
-        min_tracking_confidence=0.9
-    )
-
-
-def create_hands_model():
-    return mp.solutions.hands.Hands(
-        static_image_mode=False,
-        max_num_hands=2,
-        model_complexity=1,
+        refine_face_landmarks=False,
         min_detection_confidence=0.9,
         min_tracking_confidence=0.9
     )
@@ -210,34 +200,22 @@ def __normal_distribution_sample(total_frames: int, num_frames: int) -> list[int
     return sorted(np.unique(frame_indices))
 
 
-def __process_frame(video_frame: VideoFrame, pose_model, hands_model):
+def __process_frame(video_frame: VideoFrame, holistic_model):
     """Processa um frame, extrai e concatena todos os landmarks em um único vetor."""
     video_frame.resize(Settings.VIDEO_WIDTH, Settings.VIDEO_HEIGHT).bgr_to_rgb()
     
-    # Process Pose
-    pose_results = pose_model.process(video_frame.frame)
-    pose = np.array([[res.x, res.y, res.z] for res in pose_results.pose_landmarks.landmark]).flatten() \
-        if pose_results.pose_landmarks else np.zeros(33 * 3)
+    results = holistic_model.process(video_frame.frame)
 
-    # Process Hands
-    hands_results = hands_model.process(video_frame.frame)
-    
-    lh = np.zeros(21 * 3)
-    rh = np.zeros(21 * 3)
+    pose = np.array([[res.x, res.y, res.z] for res in results.pose_landmarks.landmark]).flatten() \
+        if results.pose_landmarks else np.zeros(33 * 3)
+    face = np.array([[res.x, res.y, res.z] for res in results.face_landmarks.landmark]).flatten() \
+        if results.face_landmarks else np.zeros(468 * 3)
+    lh = np.array([[res.x, res.y, res.z] for res in results.left_hand_landmarks.landmark]).flatten() \
+        if results.left_hand_landmarks else np.zeros(21 * 3)
+    rh = np.array([[res.x, res.y, res.z] for res in results.right_hand_landmarks.landmark]).flatten() \
+        if results.right_hand_landmarks else np.zeros(21 * 3)
 
-    if hands_results.multi_hand_landmarks:
-        for idx, hand_handedness in enumerate(hands_results.multi_handedness):
-            label = hand_handedness.classification[0].label
-            landmarks = hands_results.multi_hand_landmarks[idx]
-            
-            flat_landmarks = np.array([[res.x, res.y, res.z] for res in landmarks.landmark]).flatten()
-            
-            if label == 'Left':
-                lh = flat_landmarks
-            elif label == 'Right':
-                rh = flat_landmarks
-
-    return np.concatenate([pose, lh, rh])
+    return np.concatenate([pose, face, lh, rh])
 
 
 def __augment_frame(video_frame: VideoFrame, params) -> VideoFrame:
