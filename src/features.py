@@ -35,7 +35,7 @@ def extract_features(video_file: str, num_frames: int, label: int, signaler: int
 
     geometric_features = extract_custom_geometric_features(landmarks)
 
-    save_features(geometric_features, label, signaler, video_file, features_save_dir_path, augment_index)
+    save_features(geometric_features, landmarks, label, signaler, video_file, features_save_dir_path, augment_index)
 
     return geometric_features
 
@@ -53,12 +53,12 @@ def extract_features_from_frames(video_frames, video_file, label, signaler, feat
 
     geometric_features = extract_custom_geometric_features(landmarks)
 
-    save_features(geometric_features, label, signaler, video_file, features_save_dir_path, augment_index)
+    save_features(geometric_features, landmarks, label, signaler, video_file, features_save_dir_path, augment_index)
 
     return geometric_features
 
 
-def save_features(features, label, signaler, video_file: str, save_dir: str, augment_index: int = None) -> str:
+def save_features(features, landmarks, label, signaler, video_file: str, save_dir: str, augment_index: int = None) -> str:
     """Salva features, label e sinalizador em um arquivo .pkl."""
     make_directories(save_dir)
 
@@ -67,6 +67,7 @@ def save_features(features, label, signaler, video_file: str, save_dir: str, aug
 
     with open(save_path, 'wb') as file:
         pickle.dump({
+            'keypoints': landmarks,
             'features': features,
             'label': label,
             'signaler': signaler
