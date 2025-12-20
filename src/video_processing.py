@@ -6,7 +6,8 @@ from tqdm import tqdm
 from file_utils import get_folder_name, get_filename
 from dataset import Dataset
 from class_mapping import class_name_mapping
-from features import read_all_video_frames, sample_frames_from_list, load_features, get_features_from_frames
+from features import load_features, get_features_from_frames
+from landmarks import read_all_video_frames, sample_frames_from_list
 
 
 def process_videos(video_files: list[str], num_frames: int, save_dir: str, augment_factor: int = 20) -> Dataset:
