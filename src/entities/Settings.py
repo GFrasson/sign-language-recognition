@@ -53,7 +53,10 @@ class GeometricFeaturesSettings:
         (0, 17, 13), (0, 5, 9)  # Palma (base dos dedos)
     ]
 
-    POSE_PAIRS_INDEXES: list[tuple[int, int]] = [
+    # --- Configuration ---
+    USE_LEGACY_FEATURES: bool = False
+
+    POSE_PAIRS_INDEXES_LEGACY: list[tuple[int, int]] = [
         (0, 15), (0, 16),  # Nariz e pulsos
         (12, 16), (12, 15), (11, 16), (11, 15),  # Ombros e pulsos
         (12, 14), (12, 13), (11, 14), (11, 13),  # Ombros e cotovelos
@@ -69,7 +72,56 @@ class GeometricFeaturesSettings:
         (13, 14)  # Cotovelos esquerdo e direito
     ]
 
+    POSE_PAIRS_INDEXES_NEW: list[tuple[int, int]] = [
+        (0, 15), (0, 16),  # Nariz e pulsos
+        (12, 16), (12, 15), (11, 16), (11, 15),  # Ombros e pulsos
+        (12, 14), (12, 13), (11, 14), (11, 13),  # Ombros e cotovelos
+        (16, 17), (15, 18),  # Pulsos cruzados com dedinhos (Esq-Dir, Dir-Esq)
+        (16, 19), (15, 20),  # Pulsos cruzados com indicadores
+        (18, 19), (17, 20),  # Dedinhos cruzados com indicadores
+        (18, 21), (17, 22),  # Dedinhos cruzados com polegares
+        (20, 21), (19, 22),  # Indicadores cruzados com polegares
+        (21, 22),  # Polegares esquerdo e direito
+        (19, 20),  # Indicadores esquerdo e direito
+        (17, 18),  # Mindinhos esquerdo e direito
+        (15, 16),  # Pulsos esquerdo e direito
+        (13, 14)  # Cotovelos esquerdo e direito
+    ]
+
+    # Default to NEW list
+    POSE_PAIRS_INDEXES: list[tuple[int, int]] = POSE_PAIRS_INDEXES_NEW
+
+    HAND_PALM_NORMAL_INDICES: list[int] = [0, 5, 17]  # Wrist, IndexMCP, PinkyMCP
+
+    HAND_FINGERTIP_THUMB_PAIRS: list[tuple[int, int]] = [
+        (4, 8), (4, 12), (4, 16), (4, 20)  # Thumb tip to other tips
+    ]
+
+    HAND_WRIST_FINGERTIP_PAIRS: list[tuple[int, int]] = [
+        (0, 4), (0, 8), (0, 12), (0, 16), (0, 20)  # Wrist to all tips
+    ]
+
     NUM_ANGLES_PER_HAND: int = len(HAND_CONNECTIONS_INDEXES)
+    NUM_DISTANCES_PER_HAND: int = len(HAND_FINGERTIP_THUMB_PAIRS) + len(HAND_WRIST_FINGERTIP_PAIRS)
+    
     # +1 para a distância do torso
     NUM_POSE_DISTANCES: int = len(POSE_PAIRS_INDEXES) + 1
-    N_FEATURES: int = 2 * NUM_ANGLES_PER_HAND + NUM_POSE_DISTANCES
+    
+    # Features (calculated dynamically in configure(), but set defaults here)
+    N_FEATURES: int = (2 * NUM_ANGLES_PER_HAND) + NUM_POSE_DISTANCES + (2 * NUM_DISTANCES_PER_HAND) + (2 * 3)
+
+    @classmethod
+    def configure(cls, use_legacy: bool):
+        cls.USE_LEGACY_FEATURES = use_legacy
+        
+        if use_legacy:
+            cls.POSE_PAIRS_INDEXES = cls.POSE_PAIRS_INDEXES_LEGACY
+            cls.NUM_POSE_DISTANCES = len(cls.POSE_PAIRS_INDEXES) + 1
+            # Legacy: Angles (52) + Pose (36) = 88
+            cls.N_FEATURES = (2 * cls.NUM_ANGLES_PER_HAND) + cls.NUM_POSE_DISTANCES
+        else:
+            cls.POSE_PAIRS_INDEXES = cls.POSE_PAIRS_INDEXES_NEW
+            cls.NUM_POSE_DISTANCES = len(cls.POSE_PAIRS_INDEXES) + 1
+            # New: Angles (52) + Pose (26) + Distances (18) + Normal (6) = 102
+            cls.N_FEATURES = (2 * cls.NUM_ANGLES_PER_HAND) + cls.NUM_POSE_DISTANCES + (2 * cls.NUM_DISTANCES_PER_HAND) + (2 * 3)
+

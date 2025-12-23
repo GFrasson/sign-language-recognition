@@ -3,6 +3,7 @@ from datetime import datetime
 from os import path, rename
 import random
 import os
+import argparse
 import tensorflow as tf
 import numpy as np
 
@@ -147,12 +148,21 @@ def cross_validate_leave_two_signalers_out(dataset: Dataset, rng: np.random.Gene
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Sign Language Recognition")
+    parser.add_argument('--legacy-features', action='store_true', help='Use legacy 88 features instead of new 102 features')
+    args = parser.parse_args()
+
+    # Configure features based on flag
+    GeometricFeaturesSettings.configure(args.legacy_features)
+    print(f"Feature Mode: {'LEGACY (88)' if args.legacy_features else 'NEW (102)'}")
+    print(f"N_FEATURES configured: {GeometricFeaturesSettings.N_FEATURES}")
+
     rng = setup_environment(Settings.SEED)
 
     video_files: list[str] = list_filepaths_with_extension(Settings.DATA_PATH, '.mp4')
     print(f"Encontrados {len(video_files)} vídeos para processar")
 
-    dataset = process_videos(video_files, Settings.NUM_FRAMES, Settings.FEATURES_PATH, augment_factor=20)
+    dataset = process_videos(video_files, Settings.NUM_FRAMES, Settings.FEATURES_PATH, augment_factor=20, use_legacy=args.legacy_features)
 
     if len(dataset.X) == 0:
         print("Nenhum vídeo foi processado com sucesso. Verifique os caminhos e formatos dos arquivos.")

@@ -20,7 +20,21 @@ def extract_frame_features(frame_landmarks):
     right_hand_angles = __calculate_hand_angles(right_hand_landmarks)
     pose_distances = __calculate_pose_distances(pose_landmarks)
 
-    return np.concatenate([left_hand_angles, right_hand_angles, pose_distances])
+    if GeometricFeaturesSettings.USE_LEGACY_FEATURES:
+        return np.concatenate([left_hand_angles, right_hand_angles, pose_distances])
+
+    left_hand_distances = __calculate_hand_distances(left_hand_landmarks)
+    right_hand_distances = __calculate_hand_distances(right_hand_landmarks)
+
+    left_hand_normal = __calculate_palm_normal(left_hand_landmarks)
+    right_hand_normal = __calculate_palm_normal(right_hand_landmarks)
+
+    return np.concatenate([
+        left_hand_angles, right_hand_angles,
+        pose_distances,
+        left_hand_distances, right_hand_distances,
+        left_hand_normal, right_hand_normal
+    ])
 
 
 def __compute_angle_between_vectors(v1, v2):
@@ -99,3 +113,69 @@ def __calculate_pose_distances(pose_landmarks):
         distances.append(0)
 
     return np.array(distances[:GeometricFeaturesSettings.NUM_POSE_DISTANCES])
+
+
+def __calculate_hand_scale(hand_landmarks):
+    """
+    Calcula a escala da mão baseada na distância entre o Pulso (0) e a base do dedo médio (9).
+    Usado para normalizar outras distâncias da mão.
+    """
+    wrist = hand_landmarks[0]
+    middle_mcp = hand_landmarks[9]
+    return np.linalg.norm(middle_mcp - wrist)
+
+
+def __calculate_palm_normal(hand_landmarks):
+    """
+    Calcula o vetor normal da palma da mão.
+    Usa o produto vetorial entre (IndexMCP - Wrist) e (PinkyMCP - Wrist).
+    Retorna vetor normalizado (x, y, z).
+    """
+    if hand_landmarks.sum() == 0:
+        return np.zeros(3)
+
+    wrist_idx, index_mcp_idx, pinky_mcp_idx = GeometricFeaturesSettings.HAND_PALM_NORMAL_INDICES
+    
+    wrist = hand_landmarks[wrist_idx]
+    index_mcp = hand_landmarks[index_mcp_idx]
+    pinky_mcp = hand_landmarks[pinky_mcp_idx]
+
+    v1 = index_mcp - wrist
+    v2 = pinky_mcp - wrist
+
+    normal = np.cross(v1, v2)
+    norm = np.linalg.norm(normal)
+
+    if norm < 1e-6:
+        return np.zeros(3)
+
+    return normal / norm
+
+
+def __calculate_hand_distances(hand_landmarks):
+    """
+    Calcula distâncias normalizadas entre:
+    - Pontas dos dedos e ponta do polegar.
+    - Pulso e pontas dos dedos.
+    """
+    if hand_landmarks.sum() == 0:
+        return np.zeros(GeometricFeaturesSettings.NUM_DISTANCES_PER_HAND)
+
+    scale = __calculate_hand_scale(hand_landmarks)
+    if scale < 1e-6:
+        return np.zeros(GeometricFeaturesSettings.NUM_DISTANCES_PER_HAND)
+
+    distances = []
+    
+    # Distâncias Dedos-Polegar
+    for p1_idx, p2_idx in GeometricFeaturesSettings.HAND_FINGERTIP_THUMB_PAIRS:
+        dist = np.linalg.norm(hand_landmarks[p1_idx] - hand_landmarks[p2_idx])
+        distances.append(dist / scale)
+
+    # Distâncias Pulso-Pontas
+    for p1_idx, p2_idx in GeometricFeaturesSettings.HAND_WRIST_FINGERTIP_PAIRS:
+        dist = np.linalg.norm(hand_landmarks[p1_idx] - hand_landmarks[p2_idx])
+        distances.append(dist / scale)
+
+    return np.array(distances)
+

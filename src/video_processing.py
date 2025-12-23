@@ -8,17 +8,18 @@ from dataset import Dataset
 from class_mapping import class_name_mapping
 from features import load_features, get_features_from_frames
 from landmarks import read_all_video_frames, sample_frames_from_list
+from entities.Settings import GeometricFeaturesSettings
 
 
-def process_videos(video_files: list[str], num_frames: int, save_dir: str, augment_factor: int = 20) -> Dataset:
+def process_videos(video_files: list[str], num_frames: int, save_dir: str, augment_factor: int = 20, use_legacy: bool = False) -> Dataset:
     """Processa uma lista de vídeos, com aumento de dados. (Paralelizado)"""
     X, y, signalers, is_augmented = [], [], [], []
     class_map = {}
 
     # Prepare arguments for parallel processing
-    tasks = [(video_file, num_frames, save_dir, augment_factor) for video_file in video_files]
+    tasks = [(video_file, num_frames, save_dir, augment_factor, use_legacy) for video_file in video_files]
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=3) as executor:
         results = list(tqdm(executor.map(process_single_video_wrapper, tasks), total=len(video_files), desc="Extraindo Features"))
 
     for result in results:
@@ -41,7 +42,13 @@ def process_videos(video_files: list[str], num_frames: int, save_dir: str, augme
 
 def process_single_video_wrapper(args):
     """Wrapper para desempacotar argumentos para o map do executor."""
-    return process_single_video(*args)
+    # Desempacotar incluindo use_legacy que é o último argumento
+    video_file, num_frames, save_dir, augment_factor, use_legacy = args
+    
+    # Configurar Settings no processo filho (crucial para Windows/spawn)
+    GeometricFeaturesSettings.configure(use_legacy)
+    
+    return process_single_video(video_file, num_frames, save_dir, augment_factor)
 
 
 def process_single_video(video_file: str, num_frames: int, save_dir: str, augment_factor: int):
@@ -90,17 +97,17 @@ def process_single_video(video_file: str, num_frames: int, save_dir: str, augmen
 
         # 3. Process missing indices
         for idx in missing_indices:
-             # Sample specific frames for this iteration to ensure temporal diversity
-             # Each iteration gets a different random subset of frames (normal distribution)
-             sampled_frames = sample_frames_from_list(all_video_frames, num_frames)
-             
-             if sampled_frames is None:
-                 print(f"Error sampling frames for {video_file} (Total: {len(all_video_frames)})")
-                 continue
-                 
-             feat = get_features_from_frames(sampled_frames, video_file, label, signaler, features_save_dir_path, idx)
-             if feat is not None:
-                 video_features_list.append((feat, idx is not None))
+            # Sample specific frames for this iteration to ensure temporal diversity
+            # Each iteration gets a different random subset of frames (normal distribution)
+            sampled_frames = sample_frames_from_list(all_video_frames, num_frames)
+            
+            if sampled_frames is None:
+                print(f"Error sampling frames for {video_file} (Total: {len(all_video_frames)})")
+                continue
+                
+            feat = get_features_from_frames(sampled_frames, video_file, label, signaler, features_save_dir_path, idx)
+            if feat is not None:
+                video_features_list.append((feat, idx is not None))
         
         if not video_features_list:
             return None
