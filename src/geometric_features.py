@@ -13,6 +13,7 @@ def extract_frame_features(frame_landmarks):
     """Extrai as 88 features geométricas de um único frame."""
     all_landmarks = frame_landmarks.reshape(-1, 3)
     pose_landmarks = all_landmarks[LandmarkSettings.POSE_START:LandmarkSettings.POSE_END]
+    face_landmarks = all_landmarks[LandmarkSettings.FACE_START:LandmarkSettings.FACE_END]
     left_hand_landmarks = all_landmarks[LandmarkSettings.LEFT_HAND_START:LandmarkSettings.LEFT_HAND_END]
     right_hand_landmarks = all_landmarks[LandmarkSettings.RIGHT_HAND_START:LandmarkSettings.RIGHT_HAND_END]
 
@@ -29,11 +30,14 @@ def extract_frame_features(frame_landmarks):
     left_hand_normal = __calculate_palm_normal(left_hand_landmarks)
     right_hand_normal = __calculate_palm_normal(right_hand_landmarks)
 
+    face_distances = __calculate_face_distances(pose_landmarks, face_landmarks, left_hand_landmarks, right_hand_landmarks)
+
     return np.concatenate([
         left_hand_angles, right_hand_angles,
         pose_distances,
         left_hand_distances, right_hand_distances,
-        left_hand_normal, right_hand_normal
+        left_hand_normal, right_hand_normal,
+        face_distances
     ])
 
 
@@ -179,3 +183,60 @@ def __calculate_hand_distances(hand_landmarks):
 
     return np.array(distances)
 
+
+def __calculate_face_distances(pose_landmarks, face_landmarks, left_hand, right_hand):
+    """
+    Calcula distâncias normalizadas entre pontos das mãos e âncoras na face.
+    Normalização baseada no tamanho do torso (mesma escala da pose).
+    """
+    # Se pose ou face não detectados, retorna zeros
+    if pose_landmarks.sum() == 0 or face_landmarks.sum() == 0:
+        return np.zeros(GeometricFeaturesSettings.NUM_FACE_ANCHORS * 4)
+
+    torso_size, pose_center = __calculate_torso_size(pose_landmarks)
+    if torso_size < 1e-6:
+        return np.zeros(GeometricFeaturesSettings.NUM_FACE_ANCHORS * 4)
+
+    # Função auxiliar para normalizar pontos no espaço do torso
+    def normalize(point):
+        return (point - pose_center) / torso_size
+
+    # Extrair e normalizar âncoras da face
+    face_anchors = []
+    for idx in GeometricFeaturesSettings.FACE_ANCHOR_INDICES:
+        if idx < len(face_landmarks):
+            face_anchors.append(normalize(face_landmarks[idx]))
+        else:
+            face_anchors.append(np.zeros(3))
+
+    distances = []
+
+    # Pontos de interesse nas mãos: Pulso (0) e Ponta Indicador (8)
+    # Se a mão não for detectada (sum=0), usamos o pose_center (distancia será grande/inválida?)
+    # Ou melhor: se mão não detectada, distâncias = 0?
+    # Para consistência com zeros de features ausentes -> 0.
+    
+    # Left Hand
+    if left_hand.sum() != 0:
+        lh_wrist = normalize(left_hand[0])
+        lh_index = normalize(left_hand[8])
+        for anchor in face_anchors:
+            distances.append(np.linalg.norm(lh_wrist - anchor))
+        for anchor in face_anchors:
+            distances.append(np.linalg.norm(lh_index - anchor))
+    else:
+        # 2 pontos * NUM_FACE_ANCHORS zeros
+        distances.extend([0] * (2 * len(face_anchors)))
+
+    # Right Hand
+    if right_hand.sum() != 0:
+        rh_wrist = normalize(right_hand[0])
+        rh_index = normalize(right_hand[8])
+        for anchor in face_anchors:
+            distances.append(np.linalg.norm(rh_wrist - anchor))
+        for anchor in face_anchors:
+            distances.append(np.linalg.norm(rh_index - anchor))
+    else:
+        distances.extend([0] * (2 * len(face_anchors)))
+
+    return np.array(distances)

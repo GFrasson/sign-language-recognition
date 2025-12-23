@@ -2,7 +2,7 @@ class Settings:
     NUM_FRAMES: int = 15
     LSTM_UNITS: int = 512
     DATA_PATH: str = "data/videos"
-    FEATURES_PATH: str = "data/features"
+    FEATURES_PATH: str = "data/features-88"
     MODELS_PATH: str = "models"
     SEED: int = 42
     VIDEO_WIDTH: int = 640
@@ -101,14 +101,24 @@ class GeometricFeaturesSettings:
         (0, 4), (0, 8), (0, 12), (0, 16), (0, 20)  # Wrist to all tips
     ]
 
+    FACE_ANCHOR_INDICES: list[int] = [
+        33,   # Left Eye (Inner)
+        263,  # Right Eye (Inner)
+        234,  # Left Ear
+        454,  # Right Ear
+        61,   # Mouth Left
+        291   # Mouth Right
+    ]
+
     NUM_ANGLES_PER_HAND: int = len(HAND_CONNECTIONS_INDEXES)
     NUM_DISTANCES_PER_HAND: int = len(HAND_FINGERTIP_THUMB_PAIRS) + len(HAND_WRIST_FINGERTIP_PAIRS)
+    NUM_FACE_ANCHORS: int = len(FACE_ANCHOR_INDICES)
     
     # +1 para a distância do torso
     NUM_POSE_DISTANCES: int = len(POSE_PAIRS_INDEXES) + 1
     
     # Features (calculated dynamically in configure(), but set defaults here)
-    N_FEATURES: int = (2 * NUM_ANGLES_PER_HAND) + NUM_POSE_DISTANCES + (2 * NUM_DISTANCES_PER_HAND) + (2 * 3)
+    N_FEATURES: int = (2 * NUM_ANGLES_PER_HAND) + NUM_POSE_DISTANCES + (2 * NUM_DISTANCES_PER_HAND) + (2 * 3) + (4 * NUM_FACE_ANCHORS)
 
     @classmethod
     def configure(cls, use_legacy: bool):
@@ -122,6 +132,6 @@ class GeometricFeaturesSettings:
         else:
             cls.POSE_PAIRS_INDEXES = cls.POSE_PAIRS_INDEXES_NEW
             cls.NUM_POSE_DISTANCES = len(cls.POSE_PAIRS_INDEXES) + 1
-            # New: Angles (52) + Pose (26) + Distances (18) + Normal (6) = 102
-            cls.N_FEATURES = (2 * cls.NUM_ANGLES_PER_HAND) + cls.NUM_POSE_DISTANCES + (2 * cls.NUM_DISTANCES_PER_HAND) + (2 * 3)
+            # New: Angles (52) + Pose (26) + Distances (18) + Normal (6) + FaceDist (24) = 126
+            cls.N_FEATURES = (2 * cls.NUM_ANGLES_PER_HAND) + cls.NUM_POSE_DISTANCES + (2 * cls.NUM_DISTANCES_PER_HAND) + (2 * 3) + (4 * cls.NUM_FACE_ANCHORS)
 

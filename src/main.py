@@ -116,6 +116,8 @@ def cross_validate_leave_two_signalers_out(dataset: Dataset, rng: np.random.Gene
     current_models_folder = create_models_folder(Settings.MODELS_PATH)
 
     unique_signalers = np.unique(dataset.signalers)
+    # unique_signalers = [s for s in unique_signalers if s != 1]
+
     n_signalers = len(unique_signalers)
 
     # Fix order for reproducibility using the passed generator
