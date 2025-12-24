@@ -4,6 +4,7 @@ import pickle
 from geometric_features import extract_custom_geometric_features
 from landmarks import process_frames
 from file_utils import make_directories, get_filename
+from entities.Settings import GeometricFeaturesSettings
 
 
 def get_features_from_frames(video_frames, video_file, label, signaler, features_save_dir_path, augment_index=None):
@@ -63,8 +64,17 @@ def load_features(video_file: str, save_dir: str, augment_index: int = None):
         with open(save_path, 'rb') as file:
             data = pickle.load(file)
 
-        # return data['features'], data['label'], data['signaler']
-        return data['features']
+        features = data['features']
+
+        # Check for dimension mismatch (Legacy vs New features)
+        if features is not None and features.shape[1] != GeometricFeaturesSettings.N_FEATURES:
+            # print(f"Dimension mismatch for {video_file}: Loaded {features.shape[1]}, Expected {GeometricFeaturesSettings.N_FEATURES}. Attempting to re-calculate from keypoints.")
+            
+            if 'keypoints' in data and data['keypoints'] is not None:
+                # Re-calculate features using current settings (e.g. Legacy)
+                features = extract_custom_geometric_features(data['keypoints'])
+            
+        return features
 
     return None
 
