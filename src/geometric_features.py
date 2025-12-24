@@ -10,8 +10,9 @@ def extract_custom_geometric_features(landmarks_sequence):
 
 
 def extract_frame_features(frame_landmarks):
-    """Extrai as 88 features geométricas de um único frame."""
+    """Extrai as features geométricas de um único frame."""
     all_landmarks = frame_landmarks.reshape(-1, 3)
+    
     pose_landmarks = all_landmarks[LandmarkSettings.POSE_START:LandmarkSettings.POSE_END]
     face_landmarks = all_landmarks[LandmarkSettings.FACE_START:LandmarkSettings.FACE_END]
     left_hand_landmarks = all_landmarks[LandmarkSettings.LEFT_HAND_START:LandmarkSettings.LEFT_HAND_END]

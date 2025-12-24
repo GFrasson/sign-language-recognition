@@ -4,7 +4,7 @@ import numpy as np
 from tqdm import tqdm
 
 from file_utils import get_folder_name, get_filename
-from dataset import Dataset
+from entities.Dataset import Dataset
 from class_mapping import class_name_mapping
 from features import load_features, get_features_from_frames
 from landmarks import read_all_video_frames, sample_frames_from_list

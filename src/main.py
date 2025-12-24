@@ -7,7 +7,7 @@ import argparse
 import tensorflow as tf
 import numpy as np
 
-from dataset import Dataset
+from entities.Dataset import Dataset
 from file_utils import make_directories, list_filepaths_with_extension
 
 from entities.Model import Model

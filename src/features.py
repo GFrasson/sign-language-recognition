@@ -6,15 +6,6 @@ from landmarks import extract_landmarks, process_frames
 from file_utils import make_directories, get_filename
 
 
-def get_features(video_file: str, num_frames: int, label: int, signaler: int, features_save_dir_path: str, augment_index: int = None):
-    features = load_features(video_file, features_save_dir_path, augment_index)
-
-    if features is not None:
-        return features
-
-    return extract_features(video_file, num_frames, label, signaler, features_save_dir_path, augment_index)
-
-
 def get_features_from_frames(video_frames, video_file, label, signaler, features_save_dir_path, augment_index=None):
     """
     Versão otimizada que recebe frames já carregados para evitar re-leitura de disco.
@@ -24,20 +15,6 @@ def get_features_from_frames(video_frames, video_file, label, signaler, features
         return features
 
     return extract_features_from_frames(video_frames, video_file, label, signaler, features_save_dir_path, augment_index)
-
-
-def extract_features(video_file: str, num_frames: int, label: int, signaler: int, features_save_dir_path: str, augment_index: int = None):
-    landmarks = extract_landmarks(video_file, num_frames, augment=augment_index is not None)
-
-    if landmarks is None or landmarks.shape[0] != num_frames:
-        print(f"Erro ao processar vídeo: {video_file}")
-        return None
-
-    geometric_features = extract_custom_geometric_features(landmarks)
-
-    save_features(geometric_features, landmarks, label, signaler, video_file, features_save_dir_path, augment_index)
-
-    return geometric_features
 
 
 def extract_features_from_frames(video_frames, video_file, label, signaler, features_save_dir_path: str, augment_index: int = None):

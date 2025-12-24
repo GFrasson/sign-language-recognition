@@ -2,7 +2,7 @@ import os
 import pickle
 from glob import glob
 from tqdm import tqdm
-from visualization import create_skeleton_video
+from scripts.visualization import create_skeleton_video
 from entities.Settings import Settings
 
 

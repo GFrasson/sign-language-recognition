@@ -1,6 +1,5 @@
 import os
 import pickle
-import numpy as np
 from tqdm import tqdm
 from entities.Settings import Settings, GeometricFeaturesSettings
 from geometric_features import extract_custom_geometric_features
