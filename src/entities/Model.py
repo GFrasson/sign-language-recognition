@@ -1,3 +1,4 @@
+from keras.src.saving.saving_api import load_model
 from os import makedirs, path
 from keras.models import Sequential
 from keras.layers import InputLayer, Normalization, LSTM, Dropout, Dense
@@ -11,10 +12,12 @@ from entities.Settings import Settings, ModelSettings
 
 
 class Model:
-    def __init__(self, n_features, n_neurons, n_classes):
+    def __init__(self, n_features, n_neurons, n_classes, dropout_rate=None, weight_decay=None):
         self.n_features = n_features
         self.n_neurons = n_neurons
         self.n_classes = n_classes
+        self.dropout_rate = dropout_rate if dropout_rate is not None else ModelSettings.DROPOUT_RATE
+        self.weight_decay = weight_decay if weight_decay is not None else ModelSettings.WEIGHT_DECAY
         self.model = self.build_model()
 
     def build_model(self):
@@ -36,7 +39,7 @@ class Model:
         ))
 
         # Camada de Dropout para regularização
-        model.add(Dropout(ModelSettings.DROPOUT_RATE))
+        model.add(Dropout(self.dropout_rate))
 
         # Camada de Classificação
         model.add(Dense(self.n_classes, activation='softmax'))
@@ -44,7 +47,7 @@ class Model:
         # Otimizador AdamW e Função de Perda
         optimizer = AdamW(
             learning_rate=ModelSettings.LEARNING_RATE,
-            weight_decay=ModelSettings.WEIGHT_DECAY
+            weight_decay=self.weight_decay
         )
 
         model.compile(
@@ -55,16 +58,21 @@ class Model:
 
         return model
 
-    def train_model(self, X_train, y_train, X_val, y_val):
+    def train_model(self, X_train, y_train, X_val, y_val, batch_size=None, patience=None):
         """Treina o modelo com early stopping e retorna o histórico."""
+        
+        actual_batch_size = batch_size if batch_size is not None else ModelSettings.BATCH_SIZE
+        actual_patience = patience if patience is not None else ModelSettings.EARLY_STOPPING_PATIENCE
+
         early_stopping = EarlyStopping(
             monitor='val_accuracy',
-            patience=ModelSettings.EARLY_STOPPING_PATIENCE,
+            patience=actual_patience,
             restore_best_weights=True,
             # start_from_epoch=150
         )
 
         print("\nIniciando o treinamento do modelo...")
+        print(f"Batch Size: {actual_batch_size}, Patience: {actual_patience}")
 
         tf.debugging.set_log_device_placement(True)
         print("Devices:", tf.config.list_physical_devices())
@@ -76,7 +84,7 @@ class Model:
             validation_data=(X_val, y_val),
             epochs=ModelSettings.EPOCHS,
             callbacks=[early_stopping],
-            batch_size=ModelSettings.BATCH_SIZE,
+            batch_size=actual_batch_size,
         )
 
     def evaluate_model(self, X_test, y_test):

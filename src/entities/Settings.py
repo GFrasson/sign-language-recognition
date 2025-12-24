@@ -37,6 +37,11 @@ class ModelSettings:
     WEIGHT_DECAY: float = 0.005
     DROPOUT_RATE: float = 0.4
     EARLY_STOPPING_PATIENCE: int = 20
+    SPECIALIST_LSTM_UNITS: int = 64
+    SPECIALIST_BATCH_SIZE: int = 32
+    SPECIALIST_EARLY_STOPPING_PATIENCE: int = 40
+    SPECIALIST_DROPOUT_RATE: float = 0.4
+    SPECIALIST_WEIGHT_DECAY: float = 0.005
 
 
 class GeometricFeaturesSettings:

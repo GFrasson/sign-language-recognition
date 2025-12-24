@@ -2,7 +2,7 @@ import os
 import pickle
 
 from geometric_features import extract_custom_geometric_features
-from landmarks import extract_landmarks, process_frames
+from landmarks import process_frames
 from file_utils import make_directories, get_filename
 
 
