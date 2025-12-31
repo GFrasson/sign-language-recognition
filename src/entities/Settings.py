@@ -129,7 +129,6 @@ class GeometricFeaturesSettings:
     
     # Velocity features configuration
     USE_VELOCITY_FEATURES: bool = False
-    N_VELOCITY_FEATURES: int = 66  # (2*24 hand) + 12 pose + 6 kinematic = 66
 
     @classmethod
     def configure(cls, use_legacy: bool, use_velocity: bool = False):
@@ -148,6 +147,29 @@ class GeometricFeaturesSettings:
             base_features = (2 * cls.NUM_ANGLES_PER_HAND) + cls.NUM_POSE_DISTANCES + (2 * cls.NUM_DISTANCES_PER_HAND) + (2 * 3) + (4 * cls.NUM_FACE_ANCHORS)
         
         if use_velocity:
-            cls.N_FEATURES = base_features + cls.N_VELOCITY_FEATURES
+            cls.N_FEATURES = base_features + VelocityFeaturesSettings.N_VELOCITY_FEATURES
         else:
             cls.N_FEATURES = base_features
+
+class VelocityFeaturesSettings:
+    """Configuration for velocity feature extraction."""
+
+    # Key landmarks to track for velocity (indices within each hand)
+    # Wrist, Thumb tip, Index tip, Middle tip, Ring tip, Pinky tip
+    HAND_KEY_POINTS: list[int] = [0, 4, 8, 12, 16, 20]
+
+    # Pose key points for body movement tracking
+    # Nose, Left wrist, Right wrist
+    POSE_KEY_POINTS: list[int] = [0, 15, 16]
+
+    # Number of features per hand: 6 points * 4 features (vel_mag, acc_mag, dir_x, dir_y)
+    NUM_FEATURES_PER_HAND: int = len(HAND_KEY_POINTS) * 4
+
+    # Number of features for pose: 3 points * 4 features
+    NUM_POSE_FEATURES: int = len(POSE_KEY_POINTS) * 4
+
+    # Global kinematic features: peak velocity frame, velocity variance, etc.
+    NUM_KINEMATIC_FEATURES: int = 6
+
+    # Total features per frame
+    N_VELOCITY_FEATURES: int = (2 * NUM_FEATURES_PER_HAND) + NUM_POSE_FEATURES + NUM_KINEMATIC_FEATURES

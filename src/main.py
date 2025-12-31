@@ -13,7 +13,7 @@ from file_utils import make_directories, list_filepaths_with_extension
 
 from entities.Model import Model
 from entities.HierarchicalModel import HierarchicalModel
-from entities.Settings import Settings, GeometricFeaturesSettings, ModelSettings
+from entities.Settings import Settings, GeometricFeaturesSettings, ModelSettings, VelocityFeaturesSettings
 from video_processing import process_videos
 from plot import plot_confusion_matrix, plot_training_history
 
@@ -156,7 +156,7 @@ def save_run_settings(file_path: str, use_specialist: bool) -> None:
             f.write(f"NUM_DISTANCES_PER_HAND: {GeometricFeaturesSettings.NUM_DISTANCES_PER_HAND}\n")
             f.write(f"NUM_FACE_ANCHORS: {GeometricFeaturesSettings.NUM_FACE_ANCHORS}\n")
         if GeometricFeaturesSettings.USE_VELOCITY_FEATURES:
-            f.write(f"N_VELOCITY_FEATURES: {GeometricFeaturesSettings.N_VELOCITY_FEATURES}\n")
+            f.write(f"N_VELOCITY_FEATURES: {VelocityFeaturesSettings.N_VELOCITY_FEATURES}\n")
 
 
 def cross_validate_leave_two_signalers_out(dataset: Dataset, rng: np.random.Generator, use_specialist: bool = False) -> List[Dict[str, Union[int, float]]]:
