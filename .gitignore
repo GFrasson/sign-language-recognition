@@ -1,8 +1,8 @@
 venv
 venv-wsl
 data
+old-models
 models
 __pycache__
-tests.ipynb
 cuda*
 notes.txt
