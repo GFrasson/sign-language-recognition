@@ -11,13 +11,13 @@ from landmarks import read_all_video_frames, sample_frames_from_list
 from entities.Settings import GeometricFeaturesSettings
 
 
-def process_videos(video_files: list[str], num_frames: int, save_dir: str, augment_factor: int = 20, use_legacy: bool = False) -> Dataset:
+def process_videos(video_files: list[str], num_frames: int, save_dir: str, augment_factor: int = 20, use_legacy: bool = False, use_velocity: bool = False) -> Dataset:
     """Processa uma lista de vídeos, com aumento de dados. (Paralelizado)"""
     X, y, signalers, is_augmented = [], [], [], []
     class_map = {}
 
     # Prepare arguments for parallel processing
-    tasks = [(video_file, num_frames, save_dir, augment_factor, use_legacy) for video_file in video_files]
+    tasks = [(video_file, num_frames, save_dir, augment_factor, use_legacy, use_velocity) for video_file in video_files]
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=3) as executor:
         results = list(tqdm(executor.map(process_single_video_wrapper, tasks), total=len(video_files), desc="Extraindo Features"))
@@ -42,11 +42,11 @@ def process_videos(video_files: list[str], num_frames: int, save_dir: str, augme
 
 def process_single_video_wrapper(args):
     """Wrapper para desempacotar argumentos para o map do executor."""
-    # Desempacotar incluindo use_legacy que é o último argumento
-    video_file, num_frames, save_dir, augment_factor, use_legacy = args
+    # Desempacotar incluindo use_legacy e use_velocity
+    video_file, num_frames, save_dir, augment_factor, use_legacy, use_velocity = args
     
     # Configurar Settings no processo filho (crucial para Windows/spawn)
-    GeometricFeaturesSettings.configure(use_legacy)
+    GeometricFeaturesSettings.configure(use_legacy, use_velocity)
     
     return process_single_video(video_file, num_frames, save_dir, augment_factor)
 

@@ -3,6 +3,7 @@ import numpy as np
 from typing import Tuple, List, Dict
 
 from entities.Model import Model
+from entities.SpecialistModel import SpecialistModel
 from entities.Dataset import Dataset
 from entities.Settings import Settings, GeometricFeaturesSettings, ModelSettings
 
@@ -94,20 +95,15 @@ class HierarchicalModel:
         y_train_spec_mapped = self._prepare_specialist_labels(y_train_spec)
         y_val_spec_mapped = self._prepare_specialist_labels(y_val_spec)
         
-        self.specialist_model = Model(
+        self.specialist_model = SpecialistModel(
             GeometricFeaturesSettings.N_FEATURES, 
-            ModelSettings.SPECIALIST_LSTM_UNITS, 
-            len(self.specialist_classes),
-            dropout_rate=ModelSettings.SPECIALIST_DROPOUT_RATE,
-            weight_decay=ModelSettings.SPECIALIST_WEIGHT_DECAY
+            len(self.specialist_classes)
         )
         self.specialist_model.train_model(
             X_train_spec, 
             y_train_spec_mapped, 
             X_val_spec, 
-            y_val_spec_mapped,
-            batch_size=ModelSettings.SPECIALIST_BATCH_SIZE,
-            patience=ModelSettings.SPECIALIST_EARLY_STOPPING_PATIENCE
+            y_val_spec_mapped
         )
         
         return history

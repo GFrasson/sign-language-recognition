@@ -1,7 +1,9 @@
 import os
 import pickle
+import numpy as np
 
 from geometric_features import extract_custom_geometric_features
+from velocity_features import extract_velocity_features
 from landmarks import process_frames
 from file_utils import make_directories, get_filename
 from entities.Settings import GeometricFeaturesSettings
@@ -30,10 +32,17 @@ def extract_features_from_frames(video_frames, video_file, label, signaler, feat
         return None
 
     geometric_features = extract_custom_geometric_features(landmarks)
+    
+    # Combine with velocity features if enabled
+    if GeometricFeaturesSettings.USE_VELOCITY_FEATURES:
+        velocity_feats = extract_velocity_features(landmarks)
+        combined_features = np.concatenate([geometric_features, velocity_feats], axis=1)
+    else:
+        combined_features = geometric_features
 
-    save_features(geometric_features, landmarks, label, signaler, video_file, features_save_dir_path, augment_index)
+    save_features(combined_features, landmarks, label, signaler, video_file, features_save_dir_path, augment_index)
 
-    return geometric_features
+    return combined_features
 
 
 def save_features(features, landmarks, label, signaler, video_file: str, save_dir: str, augment_index: int = None) -> str:
@@ -66,13 +75,18 @@ def load_features(video_file: str, save_dir: str, augment_index: int = None):
 
         features = data['features']
 
-        # Check for dimension mismatch (Legacy vs New features)
+        # Check for dimension mismatch (Legacy vs New features, or Velocity added/removed)
         if features is not None and features.shape[1] != GeometricFeaturesSettings.N_FEATURES:
-            # print(f"Dimension mismatch for {video_file}: Loaded {features.shape[1]}, Expected {GeometricFeaturesSettings.N_FEATURES}. Attempting to re-calculate from keypoints.")
-            
+            # Re-calculate features using current settings
             if 'keypoints' in data and data['keypoints'] is not None:
-                # Re-calculate features using current settings (e.g. Legacy)
-                features = extract_custom_geometric_features(data['keypoints'])
+                keypoints = data['keypoints']
+                geometric_features = extract_custom_geometric_features(keypoints)
+                
+                if GeometricFeaturesSettings.USE_VELOCITY_FEATURES:
+                    velocity_feats = extract_velocity_features(keypoints)
+                    features = np.concatenate([geometric_features, velocity_feats], axis=1)
+                else:
+                    features = geometric_features
             
         return features
 
@@ -87,3 +101,4 @@ def build_features_filename(video_file: str, augment_index: int = None) -> str:
         return f"{base_name}_features.pkl"
 
     return f"{base_name}_features_aug_{augment_index}.pkl"
+

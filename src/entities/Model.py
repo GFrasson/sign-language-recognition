@@ -1,4 +1,4 @@
-from keras.src.saving.saving_api import load_model
+# from keras.src.saving.saving_api import load_model
 from os import makedirs, path
 from keras.models import Sequential
 from keras.layers import InputLayer, Normalization, LSTM, Dropout, Dense

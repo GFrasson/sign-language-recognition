@@ -1,8 +1,8 @@
 class Settings:
-    NUM_FRAMES: int = 15
+    NUM_FRAMES: int = 30
     LSTM_UNITS: int = 512
     DATA_PATH: str = "data/videos"
-    FEATURES_PATH: str = "data/features-88"
+    FEATURES_PATH: str = "data/features-hands-distances-normal-face-126-frames-30"
     MODELS_PATH: str = "models"
     SEED: int = 42
     VIDEO_WIDTH: int = 640
@@ -37,11 +37,13 @@ class ModelSettings:
     WEIGHT_DECAY: float = 0.005
     DROPOUT_RATE: float = 0.4
     EARLY_STOPPING_PATIENCE: int = 20
-    SPECIALIST_LSTM_UNITS: int = 64
+    SPECIALIST_LSTM_UNITS: int = 128
+    SPECIALIST_LSTM_UNITS_2: int = 64  # Second LSTM layer for deeper architecture
     SPECIALIST_BATCH_SIZE: int = 32
     SPECIALIST_EARLY_STOPPING_PATIENCE: int = 40
     SPECIALIST_DROPOUT_RATE: float = 0.4
     SPECIALIST_WEIGHT_DECAY: float = 0.005
+    SPECIALIST_LEARNING_RATE: float = 0.00005  # Lower than general model for fine-grained learning
 
 
 class GeometricFeaturesSettings:
@@ -124,19 +126,28 @@ class GeometricFeaturesSettings:
     
     # Features (calculated dynamically in configure(), but set defaults here)
     N_FEATURES: int = (2 * NUM_ANGLES_PER_HAND) + NUM_POSE_DISTANCES + (2 * NUM_DISTANCES_PER_HAND) + (2 * 3) + (4 * NUM_FACE_ANCHORS)
+    
+    # Velocity features configuration
+    USE_VELOCITY_FEATURES: bool = False
+    N_VELOCITY_FEATURES: int = 66  # (2*24 hand) + 12 pose + 6 kinematic = 66
 
     @classmethod
-    def configure(cls, use_legacy: bool):
+    def configure(cls, use_legacy: bool, use_velocity: bool = False):
         cls.USE_LEGACY_FEATURES = use_legacy
+        cls.USE_VELOCITY_FEATURES = use_velocity
         
         if use_legacy:
             cls.POSE_PAIRS_INDEXES = cls.POSE_PAIRS_INDEXES_LEGACY
             cls.NUM_POSE_DISTANCES = len(cls.POSE_PAIRS_INDEXES) + 1
             # Legacy: Angles (52) + Pose (36) = 88
-            cls.N_FEATURES = (2 * cls.NUM_ANGLES_PER_HAND) + cls.NUM_POSE_DISTANCES
+            base_features = (2 * cls.NUM_ANGLES_PER_HAND) + cls.NUM_POSE_DISTANCES
         else:
             cls.POSE_PAIRS_INDEXES = cls.POSE_PAIRS_INDEXES_NEW
             cls.NUM_POSE_DISTANCES = len(cls.POSE_PAIRS_INDEXES) + 1
             # New: Angles (52) + Pose (26) + Distances (18) + Normal (6) + FaceDist (24) = 126
-            cls.N_FEATURES = (2 * cls.NUM_ANGLES_PER_HAND) + cls.NUM_POSE_DISTANCES + (2 * cls.NUM_DISTANCES_PER_HAND) + (2 * 3) + (4 * cls.NUM_FACE_ANCHORS)
-
+            base_features = (2 * cls.NUM_ANGLES_PER_HAND) + cls.NUM_POSE_DISTANCES + (2 * cls.NUM_DISTANCES_PER_HAND) + (2 * 3) + (4 * cls.NUM_FACE_ANCHORS)
+        
+        if use_velocity:
+            cls.N_FEATURES = base_features + cls.N_VELOCITY_FEATURES
+        else:
+            cls.N_FEATURES = base_features

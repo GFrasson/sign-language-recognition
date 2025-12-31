@@ -149,11 +149,14 @@ def save_run_settings(file_path: str, use_specialist: bool) -> None:
         f.write("[GeometricFeaturesSettings]\n")
         f.write(f"N_FEATURES: {GeometricFeaturesSettings.N_FEATURES}\n")
         f.write(f"USE_LEGACY_FEATURES: {GeometricFeaturesSettings.USE_LEGACY_FEATURES}\n")
+        f.write(f"USE_VELOCITY_FEATURES: {GeometricFeaturesSettings.USE_VELOCITY_FEATURES}\n")
         f.write(f"NUM_ANGLES_PER_HAND: {GeometricFeaturesSettings.NUM_ANGLES_PER_HAND}\n")
         f.write(f"NUM_POSE_DISTANCES: {GeometricFeaturesSettings.NUM_POSE_DISTANCES}\n")
         if not GeometricFeaturesSettings.USE_LEGACY_FEATURES:
             f.write(f"NUM_DISTANCES_PER_HAND: {GeometricFeaturesSettings.NUM_DISTANCES_PER_HAND}\n")
             f.write(f"NUM_FACE_ANCHORS: {GeometricFeaturesSettings.NUM_FACE_ANCHORS}\n")
+        if GeometricFeaturesSettings.USE_VELOCITY_FEATURES:
+            f.write(f"N_VELOCITY_FEATURES: {GeometricFeaturesSettings.N_VELOCITY_FEATURES}\n")
 
 
 def cross_validate_leave_two_signalers_out(dataset: Dataset, rng: np.random.Generator, use_specialist: bool = False) -> List[Dict[str, Union[int, float]]]:
@@ -202,11 +205,13 @@ def main():
     parser = argparse.ArgumentParser(description="Sign Language Recognition")
     parser.add_argument('--legacy-features', action='store_true', help='Use legacy 88 features instead of new 102 features')
     parser.add_argument('--use-specialist', action='store_true', help='Use hierarchical specialist model for classes 4 and 7')
+    parser.add_argument('--use-velocity', action='store_true', help='Include velocity/acceleration features for temporal dynamics')
     args = parser.parse_args()
 
-    # Configure features based on flag
-    GeometricFeaturesSettings.configure(args.legacy_features)
-    print(f"Feature Mode: {'LEGACY (88)' if args.legacy_features else 'NEW (102)'}")
+    # Configure features based on flags
+    GeometricFeaturesSettings.configure(args.legacy_features, args.use_velocity)
+    print(f"Feature Mode: {'LEGACY (88)' if args.legacy_features else 'NEW (126)'}")
+    print(f"Velocity Features: {'ENABLED' if args.use_velocity else 'DISABLED'}")
     print(f"N_FEATURES configured: {GeometricFeaturesSettings.N_FEATURES}")
 
     rng = setup_environment(Settings.SEED)
@@ -214,7 +219,7 @@ def main():
     video_files: list[str] = list_filepaths_with_extension(Settings.DATA_PATH, '.mp4')
     print(f"Encontrados {len(video_files)} vídeos para processar")
 
-    dataset = process_videos(video_files, Settings.NUM_FRAMES, Settings.FEATURES_PATH, augment_factor=20, use_legacy=args.legacy_features)
+    dataset = process_videos(video_files, Settings.NUM_FRAMES, Settings.FEATURES_PATH, augment_factor=20, use_legacy=args.legacy_features, use_velocity=args.use_velocity)
 
     if len(dataset.X) == 0:
         print("Nenhum vídeo foi processado com sucesso. Verifique os caminhos e formatos dos arquivos.")
