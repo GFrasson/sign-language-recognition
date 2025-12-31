@@ -55,13 +55,13 @@ class SpecialistModel:
         ))
 
         # Dropout between LSTM layers
-        model.add(Dropout(self.dropout_rate * 0.5))  # Lower dropout between layers
+        # model.add(Dropout(self.dropout_rate * 0.5))  # Lower dropout between layers
 
         # Second LSTM Layer - processes the sequences from the first layer
-        model.add(LSTM(
-            self.lstm_units_2,
-            kernel_regularizer=l1(0.001),
-        ))
+        # model.add(LSTM(
+        #     self.lstm_units_2,
+        #     kernel_regularizer=l1(0.001),
+        # ))
 
         # Dropout before classification
         model.add(Dropout(self.dropout_rate))
