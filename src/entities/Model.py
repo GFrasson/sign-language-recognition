@@ -36,6 +36,7 @@ class Model:
         model.add(LSTM(
             self.n_neurons,
             kernel_regularizer=l1(0.001),  # Regularização L1
+            unroll=ModelSettings.LSTM_UNROLL
         ))
 
         # Camada de Dropout para regularização

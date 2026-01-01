@@ -206,12 +206,15 @@ def main():
     parser.add_argument('--legacy-features', action='store_true', help='Use legacy 88 features instead of new 102 features')
     parser.add_argument('--use-specialist', action='store_true', help='Use hierarchical specialist model for classes 4 and 7')
     parser.add_argument('--use-velocity', action='store_true', help='Include velocity/acceleration features for temporal dynamics')
+    parser.add_argument('--unroll-lstm', action='store_true', help='Unroll LSTM to avoid CuDNN errors with large models')
     args = parser.parse_args()
 
     # Configure features based on flags
     GeometricFeaturesSettings.configure(args.legacy_features, args.use_velocity)
+    ModelSettings.LSTM_UNROLL = args.unroll_lstm
     print(f"Feature Mode: {'LEGACY (88)' if args.legacy_features else 'NEW (126)'}")
     print(f"Velocity Features: {'ENABLED' if args.use_velocity else 'DISABLED'}")
+    print(f"LSTM Unroll: {'ENABLED' if args.unroll_lstm else 'DISABLED'}")
     print(f"N_FEATURES configured: {GeometricFeaturesSettings.N_FEATURES}")
 
     rng = setup_environment(Settings.SEED)

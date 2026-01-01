@@ -1,6 +1,6 @@
 class Settings:
     NUM_FRAMES: int = 30
-    LSTM_UNITS: int = 512
+    LSTM_UNITS: int = 1024
     DATA_PATH: str = "data/videos"
     FEATURES_PATH: str = "data/features-hands-distances-normal-face-126-frames-30"
     MODELS_PATH: str = "models"
@@ -31,7 +31,7 @@ class LandmarkSettings:
 
 
 class ModelSettings:
-    BATCH_SIZE: int = 1024
+    BATCH_SIZE: int = 512
     EPOCHS: int = 200
     LEARNING_RATE: float = 0.0001
     WEIGHT_DECAY: float = 0.005
@@ -44,6 +44,7 @@ class ModelSettings:
     SPECIALIST_DROPOUT_RATE: float = 0.4
     SPECIALIST_WEIGHT_DECAY: float = 0.005
     SPECIALIST_LEARNING_RATE: float = 0.00005  # Lower than general model for fine-grained learning
+    LSTM_UNROLL: bool = False
 
 
 class GeometricFeaturesSettings:
