@@ -48,7 +48,7 @@ def create_models_folder(base_path: str) -> str:
     return current_models_folder
 
 
-def train_and_evaluate_fold(dataset: Dataset, ordered_signalers: np.ndarray, val_signaler: int, test_signaler: int, current_models_folder: str, fold_idx: int, use_specialist: bool = False) -> Tuple[np.ndarray, np.ndarray, float]:
+def train_and_evaluate_fold(dataset: Dataset, ordered_signalers: np.ndarray, val_signaler: int, test_signaler: int, current_models_folder: str, fold_idx: int, use_specialist: bool = False, specialist_only_velocity: bool = False, general_use_velocity: bool = False) -> Tuple[np.ndarray, np.ndarray, float]:
     """
     Trains and evaluates a single fold of the cross-validation.
     """
@@ -69,7 +69,14 @@ def train_and_evaluate_fold(dataset: Dataset, ordered_signalers: np.ndarray, val
         MERGE_MAP = {7: 4}
         SPECIALIST_TRIGGER = 4
         SPECIALIST_CLASSES = [4, 7]
-        model = HierarchicalModel(MERGE_MAP, SPECIALIST_TRIGGER, SPECIALIST_CLASSES)
+        # Pass feature configuration
+        model = HierarchicalModel(
+            MERGE_MAP, 
+            SPECIALIST_TRIGGER, 
+            SPECIALIST_CLASSES,
+            general_use_velocity=general_use_velocity,
+            specialist_only_velocity=specialist_only_velocity
+        )
     else:
         model = Model(GeometricFeaturesSettings.N_FEATURES, Settings.LSTM_UNITS, dataset.n_classes)
 
@@ -159,7 +166,7 @@ def save_run_settings(file_path: str, use_specialist: bool) -> None:
             f.write(f"N_VELOCITY_FEATURES: {VelocityFeaturesSettings.N_VELOCITY_FEATURES}\n")
 
 
-def cross_validate_leave_two_signalers_out(dataset: Dataset, rng: np.random.Generator, use_specialist: bool = False) -> List[Dict[str, Union[int, float]]]:
+def cross_validate_leave_two_signalers_out(dataset: Dataset, rng: np.random.Generator, use_specialist: bool = False, specialist_only_velocity: bool = False, general_use_velocity: bool = False) -> List[Dict[str, Union[int, float]]]:
     """
     Performs Leave-Two-Signalers-Out Cross-Validation.
     """
@@ -184,7 +191,10 @@ def cross_validate_leave_two_signalers_out(dataset: Dataset, rng: np.random.Gene
         val_signaler = ordered_signalers[(i + 1) % n_signalers]
 
         y_pred, y_test, test_acc = train_and_evaluate_fold(
-            dataset, ordered_signalers, val_signaler, test_signaler, current_models_folder, i, use_specialist
+            dataset, ordered_signalers, val_signaler, test_signaler, current_models_folder, i, 
+            use_specialist=use_specialist,
+            specialist_only_velocity=specialist_only_velocity,
+            general_use_velocity=general_use_velocity
         )
 
         all_test_predictions.extend(y_pred)
@@ -206,14 +216,19 @@ def main():
     parser.add_argument('--legacy-features', action='store_true', help='Use legacy 88 features instead of new 102 features')
     parser.add_argument('--use-specialist', action='store_true', help='Use hierarchical specialist model for classes 4 and 7')
     parser.add_argument('--use-velocity', action='store_true', help='Include velocity/acceleration features for temporal dynamics')
+    parser.add_argument('--specialist-only-velocity', action='store_true', help='Specialist model uses ONLY velocity features (requires --use-specialist)')
     parser.add_argument('--unroll-lstm', action='store_true', help='Unroll LSTM to avoid CuDNN errors with large models')
     args = parser.parse_args()
 
     # Configure features based on flags
-    GeometricFeaturesSettings.configure(args.legacy_features, args.use_velocity)
+    # We must extract velocity features if EITHER the general model uses them OR the specialist model uses them
+    extraction_use_velocity = args.use_velocity or args.specialist_only_velocity
+    GeometricFeaturesSettings.configure(args.legacy_features, extraction_use_velocity)
     ModelSettings.LSTM_UNROLL = args.unroll_lstm
     print(f"Feature Mode: {'LEGACY (88)' if args.legacy_features else 'NEW (126)'}")
-    print(f"Velocity Features: {'ENABLED' if args.use_velocity else 'DISABLED'}")
+    print(f"Velocity Features (Extraction): {'ENABLED' if extraction_use_velocity else 'DISABLED'}")
+    print(f"  - General Model Velocity: {'ENABLED' if args.use_velocity else 'DISABLED'}")
+    print(f"  - Specialist Model Velocity: {'ENABLED' if args.specialist_only_velocity else 'DISABLED'}")
     print(f"LSTM Unroll: {'ENABLED' if args.unroll_lstm else 'DISABLED'}")
     print(f"N_FEATURES configured: {GeometricFeaturesSettings.N_FEATURES}")
 
@@ -222,7 +237,7 @@ def main():
     video_files: list[str] = list_filepaths_with_extension(Settings.DATA_PATH, '.mp4')
     print(f"Encontrados {len(video_files)} vídeos para processar")
 
-    dataset = process_videos(video_files, Settings.NUM_FRAMES, Settings.FEATURES_PATH, augment_factor=20, use_legacy=args.legacy_features, use_velocity=args.use_velocity)
+    dataset = process_videos(video_files, Settings.NUM_FRAMES, Settings.FEATURES_PATH, augment_factor=20, use_legacy=args.legacy_features, use_velocity=extraction_use_velocity)
 
     if len(dataset.X) == 0:
         print("Nenhum vídeo foi processado com sucesso. Verifique os caminhos e formatos dos arquivos.")
@@ -233,7 +248,13 @@ def main():
     print(f"Classes únicas encontradas: {dataset.unique_classes}")
     print(f"Número de classes: {dataset.n_classes}")
 
-    cross_validate_leave_two_signalers_out(dataset, rng, args.use_specialist)
+    cross_validate_leave_two_signalers_out(
+        dataset, 
+        rng, 
+        use_specialist=args.use_specialist,
+        specialist_only_velocity=args.specialist_only_velocity,
+        general_use_velocity=args.use_velocity
+    )
 
 
 if __name__ == '__main__':

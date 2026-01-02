@@ -50,7 +50,7 @@ class SpecialistModel:
         # First LSTM Layer - returns sequences for the second layer
         model.add(LSTM(
             self.lstm_units_1,
-            return_sequences=True,
+            # return_sequences=True,
             kernel_regularizer=l1(0.001),
         ))
 

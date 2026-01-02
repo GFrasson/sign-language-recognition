@@ -1,6 +1,6 @@
 class Settings:
     NUM_FRAMES: int = 30
-    LSTM_UNITS: int = 1024
+    LSTM_UNITS: int = 512
     DATA_PATH: str = "data/videos"
     FEATURES_PATH: str = "data/features-hands-distances-normal-face-126-frames-30"
     MODELS_PATH: str = "models"
@@ -31,7 +31,7 @@ class LandmarkSettings:
 
 
 class ModelSettings:
-    BATCH_SIZE: int = 512
+    BATCH_SIZE: int = 1024
     EPOCHS: int = 200
     LEARNING_RATE: float = 0.0001
     WEIGHT_DECAY: float = 0.005
@@ -43,7 +43,7 @@ class ModelSettings:
     SPECIALIST_EARLY_STOPPING_PATIENCE: int = 40
     SPECIALIST_DROPOUT_RATE: float = 0.4
     SPECIALIST_WEIGHT_DECAY: float = 0.005
-    SPECIALIST_LEARNING_RATE: float = 0.00005  # Lower than general model for fine-grained learning
+    SPECIALIST_LEARNING_RATE: float = 0.0001
     LSTM_UNROLL: bool = False
 
 
@@ -130,6 +130,10 @@ class GeometricFeaturesSettings:
     
     # Velocity features configuration
     USE_VELOCITY_FEATURES: bool = False
+    
+    # Detailed feature counts (populated in configure)
+    NUM_GEOMETRIC_FEATURES: int = 0
+    NUM_VELOCITY_FEATURES: int = 0
 
     @classmethod
     def configure(cls, use_legacy: bool, use_velocity: bool = False):
@@ -147,9 +151,13 @@ class GeometricFeaturesSettings:
             # New: Angles (52) + Pose (26) + Distances (18) + Normal (6) + FaceDist (24) = 126
             base_features = (2 * cls.NUM_ANGLES_PER_HAND) + cls.NUM_POSE_DISTANCES + (2 * cls.NUM_DISTANCES_PER_HAND) + (2 * 3) + (4 * cls.NUM_FACE_ANCHORS)
         
+        cls.NUM_GEOMETRIC_FEATURES = base_features
+        
         if use_velocity:
+            cls.NUM_VELOCITY_FEATURES = VelocityFeaturesSettings.N_VELOCITY_FEATURES
             cls.N_FEATURES = base_features + VelocityFeaturesSettings.N_VELOCITY_FEATURES
         else:
+            cls.NUM_VELOCITY_FEATURES = 0
             cls.N_FEATURES = base_features
 
 class VelocityFeaturesSettings:

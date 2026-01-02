@@ -11,19 +11,23 @@ class HierarchicalModel:
     def __init__(self, 
                  merge_class_map: Dict[int, int], 
                  specialist_trigger_class: int, 
-                 specialist_classes: List[int]):
+                 specialist_classes: List[int],
+                 general_use_velocity: bool = False,
+                 specialist_only_velocity: bool = False):
         """
         Args:
             merge_class_map: Dict mapping original classes to merged class for General Model.
-                             e.g. {7: 4} means class 7 becomes class 4.
             specialist_trigger_class: The class ID in the General Model that triggers the Specialist Model.
-                                      e.g. 4 (after merge).
             specialist_classes: The list of original classes the specialist distinguishes between.
-                                e.g. [4, 7].
+            general_use_velocity: Whether general model should use velocity features if available.
+            specialist_only_velocity: Whether specialist model should use ONLY velocity features and ignore geometric.
         """
         self.merge_class_map = merge_class_map
         self.specialist_trigger_class = specialist_trigger_class
         self.specialist_classes = sorted(specialist_classes)
+        
+        self.general_use_velocity = general_use_velocity
+        self.specialist_only_velocity = specialist_only_velocity
         
         # General Model will need to handle remapped labels.
         # We need to determine N classes for General Model.
@@ -38,6 +42,22 @@ class HierarchicalModel:
         # Mappings for Specialist Model (Original -> Specialist Label)
         self.specialist_label_map = {original: i for i, original in enumerate(self.specialist_classes)}
         self.specialist_inv_label_map = {i: original for i, original in enumerate(self.specialist_classes)}
+
+    def _get_general_features(self, X: np.ndarray) -> np.ndarray:
+        """Slices X to return features for the General Model."""
+        if self.general_use_velocity:
+            return X # Use all features (Geo + Vel)
+        else:
+            # Slice features on axis 2 (Batch, Frames, FEATURES)
+            return X[:, :, :GeometricFeaturesSettings.NUM_GEOMETRIC_FEATURES]
+
+    def _get_specialist_features(self, X: np.ndarray) -> np.ndarray:
+        """Slices X to return features for the Specialist Model."""
+        if self.specialist_only_velocity:
+            # Slice features on axis 2 (Batch, Frames, FEATURES)
+            return X[:, :, GeometricFeaturesSettings.NUM_GEOMETRIC_FEATURES:]
+        else:
+            return X # Use all features
 
     def _prepare_general_labels(self, y: np.ndarray) -> Tuple[np.ndarray, int]:
         """
@@ -72,9 +92,12 @@ class HierarchicalModel:
         y_train_gen, n_classes_gen = self._prepare_general_labels(y_train)
         y_val_gen, _ = self._prepare_general_labels(y_val)
         
-        self.general_model = Model(GeometricFeaturesSettings.N_FEATURES, Settings.LSTM_UNITS, n_classes_gen)
+        X_train_gen = self._get_general_features(X_train)
+        X_val_gen = self._get_general_features(X_val)
+        
+        self.general_model = Model(X_train_gen.shape[2], Settings.LSTM_UNITS, n_classes_gen)
         # Using same method as Model class but calling the underlying object
-        history = self.general_model.train_model(X_train, y_train_gen, X_val, y_val_gen)
+        history = self.general_model.train_model(X_train_gen, y_train_gen, X_val_gen, y_val_gen)
         
         # --- Train Specialist Model ---
         print("\n=== Training Specialist Model ===")
@@ -82,10 +105,10 @@ class HierarchicalModel:
         mask_train = np.isin(y_train, self.specialist_classes)
         mask_val = np.isin(y_val, self.specialist_classes)
         
-        X_train_spec = X_train[mask_train]
+        X_train_spec = self._get_specialist_features(X_train[mask_train])
         y_train_spec = y_train[mask_train]
         
-        X_val_spec = X_val[mask_val]
+        X_val_spec = self._get_specialist_features(X_val[mask_val])
         y_val_spec = y_val[mask_val]
         
         if len(X_train_spec) == 0:
@@ -96,7 +119,7 @@ class HierarchicalModel:
         y_val_spec_mapped = self._prepare_specialist_labels(y_val_spec)
         
         self.specialist_model = SpecialistModel(
-            GeometricFeaturesSettings.N_FEATURES, 
+            X_train_spec.shape[2], 
             len(self.specialist_classes)
         )
         self.specialist_model.train_model(
@@ -122,7 +145,8 @@ class HierarchicalModel:
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         # 1. Predict with General Model
-        gen_probs = self.general_model.model.predict(X, verbose=0)
+        X_gen = self._get_general_features(X)
+        gen_probs = self.general_model.model.predict(X_gen, verbose=0)
         gen_preds_mapped = np.argmax(gen_probs, axis=1)
         
         # Map back to "merged" original IDs
@@ -134,7 +158,9 @@ class HierarchicalModel:
         specialist_indices = np.where(gen_preds_merged_space == self.specialist_trigger_class)[0]
         
         if len(specialist_indices) > 0 and self.specialist_model is not None:
-            X_spec = X[specialist_indices]
+            X_spec_full = X[specialist_indices]
+            X_spec = self._get_specialist_features(X_spec_full)
+            
             spec_probs = self.specialist_model.model.predict(X_spec, verbose=0)
             spec_preds_mapped = np.argmax(spec_probs, axis=1)
             
