@@ -48,7 +48,7 @@ def create_models_folder(base_path: str) -> str:
     return current_models_folder
 
 
-def train_and_evaluate_fold(dataset: Dataset, ordered_signalers: np.ndarray, val_signaler: int, test_signaler: int, current_models_folder: str, fold_idx: int, use_specialist: bool = False, specialist_only_velocity: bool = False, general_use_velocity: bool = False) -> Tuple[np.ndarray, np.ndarray, float]:
+def train_and_evaluate_fold(dataset: Dataset, ordered_signalers: np.ndarray, val_signaler: int, test_signaler: int, current_models_folder: str, fold_idx: int, use_specialist_4_7: bool = False, use_specialist_16_17: bool = False, specialist_only_velocity: bool = False, general_use_velocity: bool = False) -> Tuple[np.ndarray, np.ndarray, float]:
     """
     Trains and evaluates a single fold of the cross-validation.
     """
@@ -64,16 +64,22 @@ def train_and_evaluate_fold(dataset: Dataset, ordered_signalers: np.ndarray, val
     print(f"Val split size: {len(X_val)}")
     print(f"Train split size: {len(X_train)}")
 
-    if use_specialist:
+    merge_map = {}
+    specialist_configs = {}
+
+    if use_specialist_4_7:
+        merge_map[7] = 4
+        specialist_configs[4] = [4, 7]
+    
+    if use_specialist_16_17:
+        merge_map[17] = 16
+        specialist_configs[16] = [16, 17]
+
+    if specialist_configs:
         # Configuration for Hierarchical Model
-        MERGE_MAP = {7: 4}
-        SPECIALIST_TRIGGER = 4
-        SPECIALIST_CLASSES = [4, 7]
-        # Pass feature configuration
         model = HierarchicalModel(
-            MERGE_MAP, 
-            SPECIALIST_TRIGGER, 
-            SPECIALIST_CLASSES,
+            merge_map, 
+            specialist_configs,
             general_use_velocity=general_use_velocity,
             specialist_only_velocity=specialist_only_velocity
         )
@@ -125,7 +131,7 @@ def aggregate_and_finalize_results(predictions: List[int], labels: List[int], un
     )
 
 
-def save_run_settings(file_path: str, use_specialist: bool) -> None:
+def save_run_settings(file_path: str, use_specialist_4_7: bool, use_specialist_16_17: bool) -> None:
     """
     Saves the configuration used for the current run to a text file.
     """
@@ -134,7 +140,8 @@ def save_run_settings(file_path: str, use_specialist: bool) -> None:
         f.write("========================================\n\n")
         
         f.write("[Arguments]\n")
-        f.write(f"use_specialist: {use_specialist}\n")
+        f.write(f"use_specialist_4_7: {use_specialist_4_7}\n")
+        f.write(f"use_specialist_16_17: {use_specialist_16_17}\n")
         f.write(f"legacy_features: {GeometricFeaturesSettings.USE_LEGACY_FEATURES}\n\n")
         
         f.write("[Settings]\n")
@@ -166,13 +173,13 @@ def save_run_settings(file_path: str, use_specialist: bool) -> None:
             f.write(f"N_VELOCITY_FEATURES: {VelocityFeaturesSettings.N_VELOCITY_FEATURES}\n")
 
 
-def cross_validate_leave_two_signalers_out(dataset: Dataset, rng: np.random.Generator, use_specialist: bool = False, specialist_only_velocity: bool = False, general_use_velocity: bool = False) -> List[Dict[str, Union[int, float]]]:
+def cross_validate_leave_two_signalers_out(dataset: Dataset, rng: np.random.Generator, use_specialist_4_7: bool = False, use_specialist_16_17: bool = False, specialist_only_velocity: bool = False, general_use_velocity: bool = False) -> List[Dict[str, Union[int, float]]]:
     """
     Performs Leave-Two-Signalers-Out Cross-Validation.
     """
     current_models_folder = create_models_folder(Settings.MODELS_PATH)
     
-    save_run_settings(path.join(current_models_folder, 'run_settings.txt'), use_specialist)
+    save_run_settings(path.join(current_models_folder, 'run_settings.txt'), use_specialist_4_7, use_specialist_16_17)
 
     unique_signalers = np.unique(dataset.signalers)
     # unique_signalers = [s for s in unique_signalers if s != 1]
@@ -192,7 +199,8 @@ def cross_validate_leave_two_signalers_out(dataset: Dataset, rng: np.random.Gene
 
         y_pred, y_test, test_acc = train_and_evaluate_fold(
             dataset, ordered_signalers, val_signaler, test_signaler, current_models_folder, i, 
-            use_specialist=use_specialist,
+            use_specialist_4_7=use_specialist_4_7,
+            use_specialist_16_17=use_specialist_16_17,
             specialist_only_velocity=specialist_only_velocity,
             general_use_velocity=general_use_velocity
         )
@@ -214,9 +222,10 @@ def cross_validate_leave_two_signalers_out(dataset: Dataset, rng: np.random.Gene
 def main():
     parser = argparse.ArgumentParser(description="Sign Language Recognition")
     parser.add_argument('--legacy-features', action='store_true', help='Use legacy 88 features instead of new 102 features')
-    parser.add_argument('--use-specialist', action='store_true', help='Use hierarchical specialist model for classes 4 and 7')
+    parser.add_argument('--use-specialist-4-7', action='store_true', help='Use hierarchical specialist model for classes 4 and 7')
+    parser.add_argument('--use-specialist-16-17', action='store_true', help='Use hierarchical specialist model for classes 16 and 17')
     parser.add_argument('--use-velocity', action='store_true', help='Include velocity/acceleration features for temporal dynamics')
-    parser.add_argument('--specialist-only-velocity', action='store_true', help='Specialist model uses ONLY velocity features (requires --use-specialist)')
+    parser.add_argument('--specialist-only-velocity', action='store_true', help='Specialist models use ONLY velocity features (requires at least one specialist flag)')
     parser.add_argument('--unroll-lstm', action='store_true', help='Unroll LSTM to avoid CuDNN errors with large models')
     args = parser.parse_args()
 
@@ -251,7 +260,8 @@ def main():
     cross_validate_leave_two_signalers_out(
         dataset, 
         rng, 
-        use_specialist=args.use_specialist,
+        use_specialist_4_7=args.use_specialist_4_7,
+        use_specialist_16_17=args.use_specialist_16_17,
         specialist_only_velocity=args.specialist_only_velocity,
         general_use_velocity=args.use_velocity
     )
