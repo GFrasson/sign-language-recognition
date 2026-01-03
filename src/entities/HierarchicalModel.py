@@ -1,11 +1,10 @@
+from typing import Tuple, List, Dict
 from os import makedirs, path
 import numpy as np
-from typing import Tuple, List, Dict
 
 from entities.Model import Model
 from entities.SpecialistModel import SpecialistModel
-from entities.Dataset import Dataset
-from entities.Settings import Settings, GeometricFeaturesSettings, ModelSettings
+from entities.Settings import Settings, GeometricFeaturesSettings
 
 class HierarchicalModel:
     def __init__(self, 
