@@ -88,7 +88,8 @@ def _train_standard_model(dataset, X_train, y_train, X_val, y_val, X_test, y_tes
             merge_map, 
             specialist_configs,
             general_use_velocity=config.use_velocity,
-            specialist_only_velocity=config.specialist_only_velocity
+            specialist_only_velocity=config.specialist_only_velocity,
+            balance_specialist_data=config.balance_specialist_data
         )
     else:
         model = Model(GeometricFeaturesSettings.N_FEATURES, Settings.LSTM_UNITS, dataset.n_classes)
@@ -259,6 +260,7 @@ def main():
     parser.add_argument('--use-velocity', action='store_true', help='Include velocity/acceleration features for temporal dynamics')
     parser.add_argument('--specialist-only-velocity', action='store_true', help='Specialist models use ONLY velocity features (requires at least one specialist flag)')
     parser.add_argument('--train-specialist-only', type=int, default=None, help='Train ONLY the specialist model for the given trigger class (e.g., 4 or 16). Filters data to only relevant classes.')
+    parser.add_argument('--balance-specialist-data', action='store_true', help='Use 50% of data for specialist classes when training the General Model to maintain balance.')
     parser.add_argument('--unroll-lstm', action='store_true', help='Unroll LSTM to avoid CuDNN errors with large models')
     args = parser.parse_args()
 
@@ -269,7 +271,8 @@ def main():
         use_velocity=args.use_velocity,
         specialist_only_velocity=args.specialist_only_velocity,
         train_specialist_only=args.train_specialist_only,
-        unroll_lstm=args.unroll_lstm
+        unroll_lstm=args.unroll_lstm,
+        balance_specialist_data=args.balance_specialist_data
     )
 
     # Configure features based on flags

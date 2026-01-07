@@ -10,6 +10,7 @@ class ExperimentConfig:
     specialist_only_velocity: bool = False
     train_specialist_only: Optional[int] = None
     unroll_lstm: bool = False
+    balance_specialist_data: bool = False
     
     @property
     def extraction_use_velocity(self) -> bool:

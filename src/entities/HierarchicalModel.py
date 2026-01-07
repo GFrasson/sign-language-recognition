@@ -12,7 +12,8 @@ class HierarchicalModel:
         merge_class_map: Dict[int, int], 
         specialist_configs: Dict[int, List[int]],
         general_use_velocity: bool = False,
-        specialist_only_velocity: bool = False
+        specialist_only_velocity: bool = False,
+        balance_specialist_data: bool = False
     ):
         """
         Args:
@@ -26,6 +27,7 @@ class HierarchicalModel:
 
         self.general_use_velocity = general_use_velocity
         self.specialist_only_velocity = specialist_only_velocity
+        self.balance_specialist_data = balance_specialist_data
 
         self.general_model: Model = None
         self.specialist_models: Dict[int, SpecialistModel] = {}
@@ -59,6 +61,43 @@ class HierarchicalModel:
         else:
             return X # Use all features
 
+    def _subsample_specialist_classes(self, X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Subsamples data for classes that are part of specialist configurations.
+        Keeps 50% of data for each specialist class.
+        """
+        specialist_classes_flat = {c for classes in self.specialist_configs.values() for c in classes}
+        
+        # If no specialist classes, return original
+        if not specialist_classes_flat:
+            return X, y
+
+        indices_to_keep = []
+        unique_classes = np.unique(y)
+
+        for c in unique_classes:
+            c_indices = np.where(y == c)[0]
+            
+            if c in specialist_classes_flat:
+                # Keep 50% of the data
+                n_keep = int(len(c_indices) * 0.5)
+                if n_keep > 0:
+                    keep_idx = np.random.choice(c_indices, n_keep, replace=False)
+                    indices_to_keep.extend(keep_idx)
+                else:
+                    pass
+            else:
+                indices_to_keep.extend(c_indices)
+        
+        indices_to_keep = np.array(sorted(indices_to_keep))
+        
+        if len(indices_to_keep) == 0:
+            print("Warning: Balancing resulted in empty dataset. Returning original.")
+            return X, y
+
+        print(f"Data Balancing: Reduced General Model training data from {len(y)} to {len(indices_to_keep)}")
+        return X[indices_to_keep], y[indices_to_keep]
+
     def _prepare_general_labels(self, y: np.ndarray) -> Tuple[np.ndarray, int]:
         """
         Merges classes and remaps them to a contiguous range 0..N-1.
@@ -89,10 +128,15 @@ class HierarchicalModel:
         """
         # --- Train General Model ---
         print("\n=== Training General Model ===")
-        y_train_gen, n_classes_gen = self._prepare_general_labels(y_train)
+        
+        X_train_gen_input, y_train_gen_input = X_train, y_train
+        if self.balance_specialist_data:
+            X_train_gen_input, y_train_gen_input = self._subsample_specialist_classes(X_train, y_train)
+
+        y_train_gen, n_classes_gen = self._prepare_general_labels(y_train_gen_input)
         y_val_gen, _ = self._prepare_general_labels(y_val)
         
-        X_train_gen = self._get_general_features(X_train)
+        X_train_gen = self._get_general_features(X_train_gen_input)
         X_val_gen = self._get_general_features(X_val)
         
         self.general_model = Model(X_train_gen.shape[2], Settings.LSTM_UNITS, n_classes_gen)
