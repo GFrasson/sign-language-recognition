@@ -1,0 +1,17 @@
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass
+class ExperimentConfig:
+    legacy_features: bool = False
+    use_specialist_4_7: bool = False
+    use_specialist_16_17: bool = False
+    use_velocity: bool = False # General model velocity
+    specialist_only_velocity: bool = False
+    train_specialist_only: Optional[int] = None
+    unroll_lstm: bool = False
+    
+    @property
+    def extraction_use_velocity(self) -> bool:
+        """New features (126) + Velocity"""
+        return self.use_velocity or self.specialist_only_velocity

@@ -8,6 +8,12 @@ class Settings:
     VIDEO_WIDTH: int = 640
     VIDEO_HEIGHT: int = 480
 
+    # Defines which classes constitute a specialist group for a given trigger class
+    SPECIALIST_CONFIGS: dict[int, list[int]] = {
+        4: [4, 7],
+        16: [16, 17]
+    }
+
 
 class LandmarkSettings:
     POSE_COUNT: int = 33

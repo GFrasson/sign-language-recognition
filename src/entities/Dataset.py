@@ -37,3 +37,38 @@ class Dataset:
         X_test, y_test = self.get_data([test_signaler], allow_augmented=False)
 
         return X_train, y_train, X_val, y_val, X_test, y_test
+
+    def filter_by_classes(self, target_classes: list[int]) -> None:
+        """
+        Filters the dataset to keep only the specified classes and remaps them to 0..N-1.
+        Updates X, y, signalers, is_augmented, and class_map in place.
+        """
+        print(f"Filtering dataset for classes: {target_classes}")
+        
+        mask = np.isin(self.y, target_classes)
+        self.X = self.X[mask]
+        self.y = self.y[mask]
+        self.signalers = self.signalers[mask]
+        if self.is_augmented is not None:
+            self.is_augmented = self.is_augmented[mask]
+            
+        print(f"Filtered Dataset Size: {len(self.X)}")
+
+        # Remap classes to 0..N
+        sorted_classes = sorted(target_classes)
+        new_class_map = {}
+        y_new = np.copy(self.y)
+        
+        for new_label, original_label in enumerate(sorted_classes):
+            y_new[self.y == original_label] = new_label
+            
+            # Update map: New Label -> Original name
+            if original_label in self.class_map:
+                new_class_map[new_label] = self.class_map[original_label]
+            else:
+                new_class_map[new_label] = f"Class {original_label}"
+
+        self.y = y_new
+        self.class_map = new_class_map
+        print(f"Remapped Labels: {np.unique(self.y)}")
+        print(f"New Class Map: {self.class_map}")
