@@ -4,6 +4,7 @@ from os import path, rename
 import random
 import os
 import argparse
+import gc
 import tensorflow as tf
 import numpy as np
 
@@ -28,6 +29,16 @@ def setup_environment(seed: int) -> np.random.Generator:
     np.random.seed(seed)
     rng = np.random.default_rng(seed)
     tf.random.set_seed(seed)
+
+    # Enable GPU memory growth
+    gpus = tf.config.list_physical_devices('GPU')
+    if gpus:
+        try:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            print(f"Enabled memory growth for {len(gpus)} GPUs")
+        except RuntimeError as e:
+            print(e)
 
     # For deterministic behavior on CuDNN backend (GPU)
     os.environ['TF_CUDNN_DETERMINISTIC'] = '1'
@@ -139,6 +150,12 @@ def train_and_evaluate_fold(dataset: Dataset, ordered_signalers: np.ndarray, val
         models_fold_path,
         target_names=dataset.unique_class_names
     )
+
+    # Clean up memory to prevent OOM
+    del model
+    del history
+    tf.keras.backend.clear_session()
+    gc.collect()
 
     return y_pred, y_test, test_acc
 

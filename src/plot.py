@@ -16,7 +16,7 @@ def plot_confusion_matrix(y_test, y_pred, unique_labels, title: str, models_fold
     plt.title(title)
     plt.tight_layout()
     plt.savefig(path.join(models_folder, "confusion_matrix.svg"), bbox_inches='tight')
-    plt.close(fig)
+    plt.close('all')
 
 
 def plot_training_history(history, folder="models"):
@@ -29,10 +29,10 @@ def plot_training_history(history, folder="models"):
     plt.plot(history.history['val_accuracy'], label='Acurácia de Validação')
     plt.legend()
     plt.savefig(accuracy_file_path)
-    plt.close()
+    plt.close('all')
 
     plt.plot(history.history['loss'], label='Perda')
     plt.plot(history.history['val_loss'], label='Perda de Validação')
     plt.legend()
     plt.savefig(loss_file_path)
-    plt.close()
+    plt.close('all')
