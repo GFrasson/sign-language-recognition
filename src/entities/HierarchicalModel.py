@@ -45,6 +45,21 @@ class HierarchicalModel:
             self.specialist_label_maps[trigger] = {original: i for i, original in enumerate(sorted_classes)}
             self.specialist_inv_label_maps[trigger] = {i: original for i, original in enumerate(sorted_classes)}
 
+    def initialize_maps(self, y: np.ndarray):
+        """
+        Initializes general label maps based on the provided labels (e.g. y_train).
+        Necessary when loading a pretrained model to ensure maps match the training state.
+        """
+        y_merged = y.copy()
+        for src, dst in self.merge_class_map.items():
+            y_merged[y_merged == src] = dst
+            
+        unique_classes = np.unique(y_merged)
+        self.general_label_map = {original: new for new, original in enumerate(unique_classes)}
+        self.general_inv_label_map = {new: original for new, original in enumerate(unique_classes)}
+        
+        print(f"HierarchicalModel maps initialized. {len(unique_classes)} general classes.")
+
     def _get_general_features(self, X: np.ndarray) -> np.ndarray:
         """Slices X to return features for the General Model."""
         if self.general_use_velocity:
@@ -233,3 +248,32 @@ class HierarchicalModel:
             spec_folder = path.join(folder, f"specialist_{trigger}")
             makedirs(spec_folder, exist_ok=True)
             spec_model.save_model(spec_folder)
+
+    def load_model(self, folder: str):
+        """Loadds both models from subdirectories."""
+        # Load General Model
+        # We need to instantiate a dummy Model first or direct load. 
+        # Since Model.load_model replaces self.model, we can just instantiate a generic one.
+        # However, we need n_features and n_classes.
+        # Assuming the folder structure exists, we can try to load.
+        
+        # General Model
+        general_folder = path.join(folder, "general")
+        # We assume self.general_model is initialized or we initialize it here?
+        # In current logic, self.general_model is None until train_model. 
+        # We should accept that we are loading into a "blank" hierarchical model.
+        # We need to initialize the sub-models objects first.
+        
+        # Initialize General Model placeholder (params don't matter as load_model overwrites self.model)
+        self.general_model = Model(1, 1, 1) # Dummy params
+        self.general_model.load_model(general_folder)
+        
+        # Load Specialist Models
+        for trigger in self.specialist_configs.keys():
+            spec_folder = path.join(folder, f"specialist_{trigger}")
+            if path.exists(spec_folder):
+                spec_model = SpecialistModel(1, 1) # Dummy params
+                spec_model.load_model(spec_folder)
+                self.specialist_models[trigger] = spec_model
+            else:
+                print(f"Warning: Specialist model folder not found for trigger {trigger} at {spec_folder}")

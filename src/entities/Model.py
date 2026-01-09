@@ -112,5 +112,14 @@ class Model:
         self.model.save(keras_path)
         print(f"Modelo salvo em formato .keras: {keras_path}")
 
+    def load_model(self, folder):
+        """Carrega o modelo salvo do formato Keras."""
+        keras_path = path.join(folder, "model.keras")
+        if not path.exists(keras_path):
+            raise FileNotFoundError(f"Modelo não encontrado em: {keras_path}")
+        
+        self.model = tf.keras.models.load_model(keras_path)
+        print(f"Modelo carregado de: {keras_path}")
+
     def summary(self):
         self.model.summary()

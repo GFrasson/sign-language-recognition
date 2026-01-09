@@ -5,9 +5,10 @@ import random
 import os
 import argparse
 import gc
+from glob import glob
 import tensorflow as tf
 import numpy as np
-
+from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
 
 from entities.Dataset import Dataset
 from file_utils import make_directories, list_filepaths_with_extension
@@ -61,7 +62,17 @@ def create_models_folder(base_path: str) -> str:
     return current_models_folder
 
 
-def _train_specialist_only(dataset, X_train, y_train, X_val, y_val, X_test, y_test, config: ExperimentConfig):
+def find_fold_folder(base_path: str, fold_idx: int, val_signaler: int, test_signaler: int) -> str:
+    """Finds the existing fold folder matching the criteria."""
+    # Pattern: {fold_idx}_fold_lstm_*_val_{val}_test_{test}
+    pattern = path.join(base_path, f"{fold_idx}_fold_lstm_*_val_{val_signaler}_test_{test_signaler}")
+    matches = glob(pattern)
+    if not matches:
+        raise FileNotFoundError(f"No folder found matching pattern: {pattern}")
+    return matches[0]
+
+
+def _train_specialist_only(dataset, X_train, y_train, X_val, y_val, X_test, y_test, config: ExperimentConfig, load_folder: str = None):
     """Helper to train purely a specialist model."""
     n_features = dataset.X.shape[2] 
     
@@ -73,7 +84,14 @@ def _train_specialist_only(dataset, X_train, y_train, X_val, y_val, X_test, y_te
         print(f"Sliced features for Specialist (Velocity Only). New n_features: {n_features}")
 
     model = SpecialistModel(n_features, dataset.n_classes)
-    history = model.train_model(X_train, y_train, X_val, y_val)
+    
+    if load_folder:
+        print(f"Loading Specialist Model from {load_folder}")
+        model.load_model(load_folder)
+        history = None
+    else:
+        history = model.train_model(X_train, y_train, X_val, y_val)
+        
     y_pred = model.predict(X_test)
     test_acc = np.mean(y_pred == y_test)
     print(f"Acurácia no conjunto de teste (Specialist Only): {test_acc:.4f}")
@@ -81,7 +99,7 @@ def _train_specialist_only(dataset, X_train, y_train, X_val, y_val, X_test, y_te
     return y_pred, test_acc, history, model
 
 
-def _train_standard_model(dataset, X_train, y_train, X_val, y_val, X_test, y_test, config: ExperimentConfig):
+def _train_standard_model(dataset, X_train, y_train, X_val, y_val, X_test, y_test, config: ExperimentConfig, load_folder: str = None):
     """Helper to train standard or hierarchical model."""
     merge_map = {}
     specialist_configs = {}
@@ -105,7 +123,15 @@ def _train_standard_model(dataset, X_train, y_train, X_val, y_val, X_test, y_tes
     else:
         model = Model(GeometricFeaturesSettings.N_FEATURES, Settings.LSTM_UNITS, dataset.n_classes)
 
-    history = model.train_model(X_train, y_train, X_val, y_val)
+    if load_folder:
+        print(f"Loading Model from {load_folder}")
+        if isinstance(model, HierarchicalModel):
+            model.initialize_maps(y_train)
+        model.load_model(load_folder)
+        history = None
+    else:
+        history = model.train_model(X_train, y_train, X_val, y_val)
+        
     y_pred, test_acc = model.evaluate_model_for_cross_validation(X_test, y_test)
 
     return y_pred, test_acc, history, model
@@ -126,31 +152,40 @@ def train_and_evaluate_fold(dataset: Dataset, ordered_signalers: np.ndarray, val
     print(f"Test split size: {len(X_test)}")
     print(f"Val split size: {len(X_val)}")
     print(f"Train split size: {len(X_train)}")
+    
+    load_fold_folder = None
+    if config.evaluate_mode and config.load_models_from:
+        try:
+            load_fold_folder = find_fold_folder(config.load_models_from, fold_idx, val_signaler, test_signaler)
+            print(f"Found existing fold folder: {load_fold_folder}")
+        except FileNotFoundError as e:
+            print(f"Error: {e}")
+            return
 
     if config.train_specialist_only is not None:
         y_pred, test_acc, history, model = _train_specialist_only(
-            dataset, X_train, y_train, X_val, y_val, X_test, y_test, config
+            dataset, X_train, y_train, X_val, y_val, X_test, y_test, config, load_folder=load_fold_folder
         )
     else:
         y_pred, test_acc, history, model = _train_standard_model(
-            dataset, X_train, y_train, X_val, y_val, X_test, y_test, config
+            dataset, X_train, y_train, X_val, y_val, X_test, y_test, config, load_folder=load_fold_folder
         )
 
     # Save model and plots for this fold
-    fold_folder_name = f"{fold_idx}_fold_lstm_{test_acc:.4f}_val_{val_signaler}_test_{test_signaler}"
-    models_fold_path = path.join(current_models_folder, fold_folder_name)
+    if not config.evaluate_mode:
+        fold_folder_name = f"{fold_idx}_fold_lstm_{test_acc:.4f}_val_{val_signaler}_test_{test_signaler}"
+        models_fold_path = path.join(current_models_folder, fold_folder_name)
 
-    model.save_model(models_fold_path)
-    plot_training_history(history, models_fold_path)
-    plot_confusion_matrix(
-        y_test,
-        y_pred,
-        dataset.unique_classes,
-        f"Confusion Matrix - Val: {val_signaler}, Test: {test_signaler}",
-        models_fold_path,
-        target_names=dataset.unique_class_names
-    )
-
+        model.save_model(models_fold_path)
+        plot_training_history(history, models_fold_path)
+        plot_confusion_matrix(
+            y_test,
+            y_pred,
+            dataset.unique_classes,
+            f"Confusion Matrix - Val: {val_signaler}, Test: {test_signaler}",
+            models_fold_path,
+            target_names=dataset.unique_class_names
+        )
     # Clean up memory to prevent OOM
     del model
     del history
@@ -166,13 +201,29 @@ def aggregate_and_finalize_results(predictions: List[int], labels: List[int], un
     """
     all_test_preds = np.array(predictions)
     all_test_labels = np.array(labels)
-
-    overall_acc = np.mean(all_test_preds == all_test_labels)
-    print(f"Acurácia final agregada: {overall_acc:.4f}")
+    
+    overall_acc = accuracy_score(all_test_labels, all_test_preds)
+    overall_prec = precision_score(all_test_labels, all_test_preds, average='weighted', zero_division=0)
+    overall_rec = recall_score(all_test_labels, all_test_preds, average='weighted', zero_division=0)
+    
+    print("\n" + "="*30)
+    print("FINAL GLOBAL METRICS")
+    print("="*30)
+    print(f"Global Accuracy:  {overall_acc:.4f}")
+    print(f"Global Precision: {overall_prec:.4f}")
+    print(f"Global Recall:    {overall_rec:.4f}")
 
     # Rename the folder to include the overall accuracy
+    if not path.exists(current_models_folder):
+        # In eval mode, if we didn't create folders per fold, check if we need to create base
+        make_directories(current_models_folder)
+        
     final_folder_path = f"{current_models_folder}_lstm_{overall_acc:.4f}"
-    rename(current_models_folder, final_folder_path)
+    try:
+        rename(current_models_folder, final_folder_path)
+    except OSError:
+        # Fallback if rename fails or folder exists
+        final_folder_path = current_models_folder
 
     plot_confusion_matrix(
         all_test_labels, 
@@ -182,6 +233,12 @@ def aggregate_and_finalize_results(predictions: List[int], labels: List[int], un
         final_folder_path,
         target_names=unique_class_names
     )
+    
+    # Save metrics text
+    with open(path.join(final_folder_path, "global_metrics.txt"), "w") as f:
+        f.write(f"Global Accuracy: {overall_acc:.4f}\n")
+        f.write(f"Global Precision: {overall_prec:.4f}\n")
+        f.write(f"Global Recall: {overall_rec:.4f}\n")
 
 
 def save_run_settings(file_path: str, config: ExperimentConfig) -> None:
@@ -227,11 +284,15 @@ def save_run_settings(file_path: str, config: ExperimentConfig) -> None:
             f.write(f"N_VELOCITY_FEATURES: {VelocityFeaturesSettings.N_VELOCITY_FEATURES}\n")
 
 
-def cross_validate_leave_two_signalers_out(dataset: Dataset, rng: np.random.Generator, config: ExperimentConfig) -> List[Dict[str, Union[int, float]]]:
+def cross_validate_leave_two_signalers_out(dataset: Dataset, rng: np.random.Generator, config: ExperimentConfig, start_fold: int = 0, resume_folder: str = None) -> List[Dict[str, Union[int, float]]]:
     """
     Performs Leave-Two-Signalers-Out Cross-Validation.
     """
-    current_models_folder = create_models_folder(Settings.MODELS_PATH)
+    if resume_folder and path.exists(resume_folder):
+        current_models_folder = resume_folder
+        print(f"Resuming execution in folder: {current_models_folder}")
+    else:
+        current_models_folder = create_models_folder(Settings.MODELS_PATH)
     
     save_run_settings(path.join(current_models_folder, 'run_settings.txt'), config)
 
@@ -247,7 +308,7 @@ def cross_validate_leave_two_signalers_out(dataset: Dataset, rng: np.random.Gene
     all_test_labels = []
     results = []
 
-    for i in range(n_signalers):
+    for i in range(start_fold, n_signalers):
         test_signaler = ordered_signalers[i]
         val_signaler = ordered_signalers[(i + 1) % n_signalers]
 
@@ -279,7 +340,14 @@ def main():
     parser.add_argument('--train-specialist-only', type=int, default=None, help='Train ONLY the specialist model for the given trigger class (e.g., 4 or 16). Filters data to only relevant classes.')
     parser.add_argument('--balance-specialist-data', action='store_true', help='Use 50% of data for specialist classes when training the General Model to maintain balance.')
     parser.add_argument('--unroll-lstm', action='store_true', help='Unroll LSTM to avoid CuDNN errors with large models')
+    parser.add_argument('--start-fold', type=int, default=0, help='Fold index to start execution from (useful for resuming)')
+    parser.add_argument('--resume-folder', type=str, default=None, help='Path to existing experiment folder to resume saving results into')
+    parser.add_argument('--evaluate-only', action='store_true', help='Skip training and evaluate using models found in --load-models-from')
+    parser.add_argument('--load-models-from', type=str, default=None, help='Path to experiment folder containing trained models to load')
     args = parser.parse_args()
+    
+    if args.evaluate_only and not args.load_models_from:
+        parser.error("--evaluate-only requires --load-models-from to be specified")
 
     config = ExperimentConfig(
         legacy_features=args.legacy_features,
@@ -289,7 +357,9 @@ def main():
         specialist_only_velocity=args.specialist_only_velocity,
         train_specialist_only=args.train_specialist_only,
         unroll_lstm=args.unroll_lstm,
-        balance_specialist_data=args.balance_specialist_data
+        balance_specialist_data=args.balance_specialist_data,
+        evaluate_mode=args.evaluate_only,
+        load_models_from=args.load_models_from
     )
 
     # Configure features based on flags
@@ -332,7 +402,7 @@ def main():
         dataset.filter_by_classes(target_classes)
 
 
-    cross_validate_leave_two_signalers_out(dataset, rng, config)
+    cross_validate_leave_two_signalers_out(dataset, rng, config, start_fold=args.start_fold, resume_folder=args.resume_folder)
 
 
 if __name__ == '__main__':

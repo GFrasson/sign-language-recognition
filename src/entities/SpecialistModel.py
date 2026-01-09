@@ -1,5 +1,5 @@
 from os import makedirs, path
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 from keras.layers import InputLayer, Normalization, LSTM, Dropout, Dense
 from keras.optimizers import AdamW
 from keras.regularizers import l1
@@ -126,6 +126,15 @@ class SpecialistModel:
 
         self.model.save(keras_path)
         print(f"Specialist model saved: {keras_path}")
+
+    def load_model(self, folder: str):
+        """Loads the model from Keras format."""
+        keras_path = path.join(folder, "model.keras")
+        if not path.exists(keras_path):
+             raise FileNotFoundError(f"Specialist model not found in: {keras_path}")
+        
+        self.model = load_model(keras_path)
+        print(f"Specialist model loaded from: {keras_path}")
 
     def summary(self):
         self.model.summary()

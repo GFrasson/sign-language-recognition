@@ -9,11 +9,10 @@ def plot_confusion_matrix(y_test, y_pred, unique_labels, title: str, models_fold
 
     display_labels = target_names if target_names is not None else unique_labels
     
-    fig, ax = plt.subplots(figsize=(10, 10))
+    fig, ax = plt.subplots(figsize=(12, 12))
     disp = ConfusionMatrixDisplay(confusion_matrix=matrix, display_labels=display_labels)
-    disp.plot(cmap=plt.cm.Blues, ax=ax, xticks_rotation='vertical')
+    disp.plot(cmap=plt.cm.Blues, ax=ax, xticks_rotation='vertical', values_format='.1%', colorbar=False, text_kw={'fontsize': 9})
 
-    plt.title(title)
     plt.tight_layout()
     plt.savefig(path.join(models_folder, "confusion_matrix.svg"), bbox_inches='tight')
     plt.close('all')
