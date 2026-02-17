@@ -12,11 +12,17 @@ def plot_confusion_matrix(y_test, y_pred, unique_labels, title: str, models_fold
     fig, ax = plt.subplots(figsize=(12, 12))
     disp = ConfusionMatrixDisplay(confusion_matrix=matrix, display_labels=display_labels)
     disp.plot(cmap=plt.cm.Blues, ax=ax, xticks_rotation='vertical', values_format='.1%', colorbar=False, text_kw={'fontsize': 9})
+    # disp.plot(cmap=plt.cm.Blues, ax=ax, xticks_rotation='vertical', values_format='.1%', colorbar=False, text_kw={'fontsize': 24})
 
     for text in disp.text_.ravel():
         text.set_text(text.get_text().replace('.', ','))
     
-    # ax.tick_params(axis='both', which='major', labelsize=18)
+    # Especialistas
+    # ax.tick_params(axis='both', which='major', labelsize=24)
+    # ax.set_xlabel('Rótulo previsto', fontsize=24)
+    # ax.set_ylabel('Rótulo verdadeiro', fontsize=24)
+    
+    ax.tick_params(axis='both', which='major', labelsize=18)
     ax.set_xlabel('Rótulo previsto', fontsize=16)
     ax.set_ylabel('Rótulo verdadeiro', fontsize=16)
 
