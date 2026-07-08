@@ -1,0 +1,9 @@
+venv
+venv-wsl
+data
+old-models
+models
+specialist-only-models
+__pycache__
+cuda*
+notes.txt
