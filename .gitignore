@@ -7,3 +7,4 @@ specialist-only-models
 __pycache__
 cuda*
 notes.txt
+miniconda*
