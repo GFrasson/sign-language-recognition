@@ -1,6 +1,6 @@
 class Settings:
     NUM_FRAMES: int = 30
-    LSTM_UNITS: int = 1024
+    LSTM_UNITS: int = 512
     DATA_PATH: str = "data/videos"
     FEATURES_PATH: str = "data/features-hands-distances-normal-face-126-frames-30"
     MODELS_PATH: str = "models"
@@ -37,7 +37,7 @@ class LandmarkSettings:
 
 
 class ModelSettings:
-    BATCH_SIZE: int = 256
+    BATCH_SIZE: int = 1024
     EPOCHS: int = 200
     LEARNING_RATE: float = 0.0001
     WEIGHT_DECAY: float = 0.005

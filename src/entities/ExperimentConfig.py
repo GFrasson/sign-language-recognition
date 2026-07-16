@@ -15,6 +15,8 @@ class ExperimentConfig:
     load_models_from: Optional[str] = None
     general_only_velocity: bool = False
     general_only_expansion: bool = False
+    lstm_units: int = 512
+    batch_size: int = 1024
     
     @property
     def extraction_use_velocity(self) -> bool:

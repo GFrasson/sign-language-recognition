@@ -265,7 +265,6 @@ def aggregate_and_finalize_results(predictions: List[int], labels: List[int], un
 
     return overall_acc
 
-
 def save_run_settings(file_path: str, config: ExperimentConfig) -> None:
     """
     Saves the configuration used for the current run to a text file.
@@ -374,6 +373,8 @@ def main():
     parser.add_argument('--load-models-from', type=str, default=None, help='Path to experiment folder containing trained models to load')
     parser.add_argument('--general-only-velocity', action='store_true', help='Use ONLY velocity features for the general model (M11)')
     parser.add_argument('--general-only-expansion', action='store_true', help='Use ONLY expansion features (or Exp + Mov) for the general model (M10, M9)')
+    parser.add_argument('--lstm-units', type=int, default=Settings.LSTM_UNITS, help='Number of units in the LSTM layer')
+    parser.add_argument('--batch-size', type=int, default=ModelSettings.BATCH_SIZE, help='Batch size for training')
     args = parser.parse_args()
     
     if args.evaluate_only and not args.load_models_from:
@@ -391,12 +392,16 @@ def main():
         evaluate_mode=args.evaluate_only,
         load_models_from=args.load_models_from,
         general_only_velocity=args.general_only_velocity,
-        general_only_expansion=args.general_only_expansion
+        general_only_expansion=args.general_only_expansion,
+        lstm_units=args.lstm_units,
+        batch_size=args.batch_size
     )
 
     # Configure features based on flags
     GeometricFeaturesSettings.configure(config.legacy_features, config.extraction_use_velocity)
     ModelSettings.LSTM_UNROLL = config.unroll_lstm
+    Settings.LSTM_UNITS = config.lstm_units
+    ModelSettings.BATCH_SIZE = config.batch_size
     print(f"Feature Mode: {'LEGACY (88)' if config.legacy_features else 'NEW (126)'}")
     print(f"Velocity Features (Extraction): {'ENABLED' if config.extraction_use_velocity else 'DISABLED'}")
     print(f"  - General Model Velocity: {'ENABLED' if config.use_velocity else 'DISABLED'}")
