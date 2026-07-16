@@ -344,6 +344,8 @@ def main():
     parser.add_argument('--resume-folder', type=str, default=None, help='Path to existing experiment folder to resume saving results into')
     parser.add_argument('--evaluate-only', action='store_true', help='Skip training and evaluate using models found in --load-models-from')
     parser.add_argument('--load-models-from', type=str, default=None, help='Path to experiment folder containing trained models to load')
+    parser.add_argument('--lstm-units', type=int, default=Settings.LSTM_UNITS, help='Number of units in the LSTM layer')
+    parser.add_argument('--batch-size', type=int, default=ModelSettings.BATCH_SIZE, help='Batch size for training')
     args = parser.parse_args()
     
     if args.evaluate_only and not args.load_models_from:
@@ -359,12 +361,16 @@ def main():
         unroll_lstm=args.unroll_lstm,
         balance_specialist_data=args.balance_specialist_data,
         evaluate_mode=args.evaluate_only,
-        load_models_from=args.load_models_from
+        load_models_from=args.load_models_from,
+        lstm_units=args.lstm_units,
+        batch_size=args.batch_size
     )
 
     # Configure features based on flags
     GeometricFeaturesSettings.configure(config.legacy_features, config.extraction_use_velocity)
     ModelSettings.LSTM_UNROLL = config.unroll_lstm
+    Settings.LSTM_UNITS = config.lstm_units
+    ModelSettings.BATCH_SIZE = config.batch_size
     print(f"Feature Mode: {'LEGACY (88)' if config.legacy_features else 'NEW (126)'}")
     print(f"Velocity Features (Extraction): {'ENABLED' if config.extraction_use_velocity else 'DISABLED'}")
     print(f"  - General Model Velocity: {'ENABLED' if config.use_velocity else 'DISABLED'}")

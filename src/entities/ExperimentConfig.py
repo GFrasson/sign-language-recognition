@@ -13,6 +13,8 @@ class ExperimentConfig:
     balance_specialist_data: bool = False
     evaluate_mode: bool = False
     load_models_from: Optional[str] = None
+    lstm_units: int = 512
+    batch_size: int = 1024
     
     @property
     def extraction_use_velocity(self) -> bool:
