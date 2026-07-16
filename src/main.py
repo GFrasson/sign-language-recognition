@@ -3,6 +3,7 @@ from datetime import datetime
 from os import path, rename
 import random
 import os
+import sys
 import argparse
 import gc
 from glob import glob
@@ -466,7 +467,14 @@ def main():
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         summary_file = path.join(Settings.MODELS_PATH, f"executions_summary_{timestamp}.txt")
         make_directories(Settings.MODELS_PATH)
+        
+        command_str = " ".join(["python"] + sys.argv)
+        
         with open(summary_file, "w") as f:
+            f.write(f"Command Executed: {command_str}\n")
+            f.write(f"Number of Frames: {Settings.NUM_FRAMES}\n")
+            f.write(f"Batch Size: {config.batch_size}\n")
+            f.write(f"LSTM Units: {config.lstm_units}\n")
             f.write(f"Total Executions: {args.executions}\n")
             f.write(f"Base Seed: {Settings.SEED}\n\n")
             for i, acc in enumerate(all_accuracies):
