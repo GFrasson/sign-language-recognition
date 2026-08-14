@@ -57,13 +57,13 @@ def run_experiment(name, frames, command):
 
 if __name__ == "__main__":
     for index, option in enumerate(experiments_options):
-        print(f"[{index}] - {option["name"]}")
+        print(f"[{index}] - {option['name']}")
 
     experiment_choice = input("Choose the experiments you want to run")
 
     try:
         experiment_object = experiments_options[int(experiment_choice)]
-        experiments = experiment_object["experiments"]
+        experiments = experiment_object['experiments']
 
         print("Starting experiment suite...")
         print(f"Total experiments to run: {len(experiments)}")
