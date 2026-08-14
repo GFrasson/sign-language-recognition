@@ -2,6 +2,7 @@ import re
 import subprocess
 import time
 from datetime import datetime
+from experiments import experiments_options
 
 # Path to the Settings.py file
 SETTINGS_PATH = "src/entities/Settings.py"
@@ -54,82 +55,34 @@ def run_experiment(name, frames, command):
         print(f"\n[ERROR] Unexpected error running {name}: {e}")
 
 
-experiments = [
-    # ----------- Tabela 6.2 -----------
-    {"name": "[M2 - Original]", "frames": 30,
-        "command": "python3.11 src/main.py --legacy-features --lstm-units 1024 --batch-size 512 --executions 5"},
-    {"name": "[M2]", "frames": 30,
-        "command": "python3.11 src/main.py --legacy-features --lstm-units 1024 --batch-size 1024 --executions 5"},
-    {"name": "[M1]", "frames": 30,
-        "command": "python3.11 src/main.py --legacy-features --lstm-units 512 --batch-size 1024 --executions 5"},
-    {"name": "[M3]", "frames": 30,
-        "command": "python3.11 src/main.py --legacy-features --lstm-units 256 --batch-size 1024 --executions 5"},
-    {"name": "[M4]", "frames": 15,
-        "command": "python3.11 src/main.py --legacy-features --lstm-units 1024 --batch-size 1024 --executions 5"},
-    {"name": "[Base]", "frames": 15,
-        "command": "python3.11 src/main.py --legacy-features --lstm-units 512 --batch-size 1024 --executions 5"},
-    {"name": "[M5]", "frames": 15,
-        "command": "python3.11 src/main.py --legacy-features --lstm-units 256 --batch-size 1024 --executions 5"},
-
-    # ----------- Tabela 6.3 -----------
-    {"name": "[M6]", "frames": 30,
-        "command": "python3.11 src/main.py --use-velocity --lstm-units 1024 --batch-size 1024 --executions 5"},
-    {"name": "[M6 / 2º variação]", "frames": 30,
-        "command": "python3.11 src/main.py --use-velocity --lstm-units 1024 --batch-size 512 --executions 5"},
-    {"name": "[M6 / 3º variação]", "frames": 30,
-        "command": "python3.11 src/main.py --use-velocity --lstm-units 1024 --batch-size 256 --executions 5"},
-    {"name": "[M7]", "frames": 30,
-        "command": "python3.11 src/main.py --legacy-features --use-velocity --lstm-units 1024 --batch-size 1024 --executions 5"},
-    {"name": "[M8]", "frames": 30,
-        "command": "python3.11 src/main.py --lstm-units 1024 --batch-size 1024 --executions 5"},
-    {"name": "[M9]", "frames": 30,
-        "command": "python3.11 src/main.py --general-only-expansion --use-velocity --lstm-units 1024 --batch-size 1024 --executions 5"},
-    {"name": "[M10]", "frames": 30,
-        "command": "python3.11 src/main.py --general-only-expansion --lstm-units 1024 --batch-size 1024 --executions 5"},
-    {"name": "[M11]", "frames": 30,
-        "command": "python3.11 src/main.py --general-only-velocity --lstm-units 1024 --batch-size 1024 --executions 5"},
-
-    # ----------- Tabela 6.4 -----------
-    {"name": "[E1]", "frames": 30, "command": "python3.11 src/main.py --train-specialist-only 16 --legacy-features --lstm-units 1024 --batch-size 1024 --executions 5"},
-    {"name": "[E2]", "frames": 30, "command": "python3.11 src/main.py --train-specialist-only 16 --use-velocity --specialist-only-velocity --lstm-units 1024 --batch-size 1024 --executions 5"},
-    {"name": "[E3]", "frames": 30,
-        "command": "python3.11 src/main.py --train-specialist-only 16 --lstm-units 1024 --batch-size 1024 --executions 5"},
-    {"name": "[E4]", "frames": 30, "command": "python3.11 src/main.py --train-specialist-only 16 --use-velocity --lstm-units 1024 --batch-size 1024 --executions 5"},
-
-    # ----------- Tabela 6.5 -----------
-    {"name": "[E5]", "frames": 30, "command": "python3.11 src/main.py --train-specialist-only 4 --legacy-features --lstm-units 1024 --batch-size 1024 --executions 5"},
-    {"name": "[E6]", "frames": 30, "command": "python3.11 src/main.py --train-specialist-only 4 --use-velocity --specialist-only-velocity --lstm-units 1024 --batch-size 1024 --executions 5"},
-    {"name": "[E7]", "frames": 30,
-        "command": "python3.11 src/main.py --train-specialist-only 4 --lstm-units 1024 --batch-size 1024 --executions 5"},
-    {"name": "[E8]", "frames": 30,
-        "command": "python3.11 src/main.py --train-specialist-only 4 --use-velocity --lstm-units 1024 --batch-size 1024 --executions 5"},
-
-    # ----------- Tabela 6.6 -----------
-    {"name": "[M14 + E2]", "frames": 30,
-        "command": "python3.11 src/main.py --use-velocity --use-specialist-16-17 --specialist-only-velocity --lstm-units 1024 --batch-size 1024 --executions 5"},
-    {"name": "[M15 + E6]", "frames": 30,
-        "command": "python3.11 src/main.py --use-velocity --use-specialist-4-7 --specialist-only-velocity --lstm-units 1024 --batch-size 1024 --executions 5"},
-    {"name": "[M16 + E2 + E6]", "frames": 30,
-        "command": "python3.11 src/main.py --use-velocity --use-specialist-4-7 --use-specialist-16-17 --specialist-only-velocity --lstm-units 1024 --batch-size 1024 --executions 5"},
-]
-
 if __name__ == "__main__":
-    print("Starting experiment suite...")
-    print(f"Total experiments to run: {len(experiments)}")
+    for index, option in enumerate(experiments_options):
+        print(f"[{index}] - {option.name}")
 
-    start_time = time.time()
+    experiment_choice = input("Choose the experiments you want to run")
 
-    for i, exp in enumerate(experiments, 1):
-        print(f"\n--- Progress: {i}/{len(experiments)} ---")
-        run_experiment(exp["name"], exp["frames"], exp["command"])
+    try:
+        experiment_object = experiments_options[int(experiment_choice)]
+        experiments = experiment_object.experiments
 
-    end_time = time.time()
-    duration = end_time - start_time
-    hours, rem = divmod(duration, 3600)
-    minutes, seconds = divmod(rem, 60)
+        print("Starting experiment suite...")
+        print(f"Total experiments to run: {len(experiments)}")
 
-    print("\n" + "="*50)
-    print("ALL EXPERIMENTS COMPLETED")
-    print(
-        f"Total time taken: {int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}")
-    print("="*50)
+        start_time = time.time()
+
+        for i, exp in enumerate(experiments, 1):
+            print(f"\n--- Progress: {i}/{len(experiments)} ---")
+            run_experiment(exp["name"], exp["frames"], exp["command"])
+
+        end_time = time.time()
+        duration = end_time - start_time
+        hours, rem = divmod(duration, 3600)
+        minutes, seconds = divmod(rem, 60)
+
+        print("\n" + "="*50)
+        print("ALL EXPERIMENTS COMPLETED")
+        print(
+            f"Total time taken: {int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}")
+        print("="*50)
+    except Exception as error:
+        print("Error:", error)
