@@ -12,6 +12,7 @@ class HierarchicalModel:
         merge_class_map: Dict[int, int], 
         specialist_configs: Dict[int, List[int]],
         general_use_velocity: bool = False,
+        general_only_expansion: bool = False,
         specialist_only_velocity: bool = False,
         balance_specialist_data: bool = False
     ):
@@ -20,12 +21,14 @@ class HierarchicalModel:
             merge_class_map: Dict mapping original classes to merged class for General Model.
             specialist_configs: Dict where key is the trigger class ID and value is list of original classes to distinguish.
             general_use_velocity: Whether general model should use velocity features if available.
+            general_only_expansion: Whether the general model should use expansion features, with velocity when available.
             specialist_only_velocity: Whether specialist models should use ONLY velocity features and ignore geometric.
         """
         self.merge_class_map = merge_class_map
         self.specialist_configs = specialist_configs
 
         self.general_use_velocity = general_use_velocity
+        self.general_only_expansion = general_only_expansion
         self.specialist_only_velocity = specialist_only_velocity
         self.balance_specialist_data = balance_specialist_data
 
@@ -62,6 +65,14 @@ class HierarchicalModel:
 
     def _get_general_features(self, X: np.ndarray) -> np.ndarray:
         """Slices X to return features for the General Model."""
+        if self.general_only_expansion:
+            expansion_start = (
+                (2 * GeometricFeaturesSettings.NUM_ANGLES_PER_HAND)
+                + GeometricFeaturesSettings.NUM_POSE_DISTANCES
+            )
+            if self.general_use_velocity:
+                return X[:, :, expansion_start:]
+            return X[:, :, expansion_start:GeometricFeaturesSettings.NUM_GEOMETRIC_FEATURES]
         if self.general_use_velocity:
             return X # Use all features (Geo + Vel)
         else:

@@ -141,6 +141,7 @@ def _train_standard_model(dataset, X_train, y_train, X_val, y_val, X_test, y_tes
             merge_map, 
             specialist_configs,
             general_use_velocity=config.use_velocity,
+            general_only_expansion=config.general_only_expansion,
             specialist_only_velocity=config.specialist_only_velocity,
             balance_specialist_data=config.balance_specialist_data
         )
